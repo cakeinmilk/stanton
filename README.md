@@ -46,7 +46,7 @@ npm version patch            # bumps package.json and creates a tag such as v0.1
 git push --follow-tags
 ```
 
-The workflow can also be run by hand from the Actions tab. The build is uploaded as a workflow artifact and no release is created.
+You can also run the **Release** workflow by hand from the Actions tab. With *publish* ticked, it creates the tag `v<package.json version>` and the release. Without it, the build is only uploaded as a workflow artifact.
 
 ## Building a Windows installer locally
 
