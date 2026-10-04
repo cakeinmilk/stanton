@@ -1,0 +1,177 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useStore } from '../store';
+import type { Entry, EntryKind } from '../types';
+import { NoteEditor } from '../editor/NoteEditor';
+import { MenuButton } from './Menu';
+import { InlineTitle } from './InlineTitle';
+import { deleteEntry, pageMenu } from '../lib/commands';
+import { extractActions } from '../lib/actions';
+import { formatDate, formatDateTime, todayIso } from '../lib/util';
+
+export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: string; focusEntryId?: string; focusActionId?: string }) {
+  const page = useStore((s) => s.pages.find((p) => p.id === pageId));
+  const project = useStore((s) => s.projects.find((p) => p.id === page?.projectId));
+  const allEntries = useStore((s) => s.entries);
+  const sort = useStore((s) => s.prefs.entrySort);
+  const setEntrySort = useStore((s) => s.setEntrySort);
+  const addEntry = useStore((s) => s.addEntry);
+  const renamePage = useStore((s) => s.renamePage);
+  const navigate = useStore((s) => s.navigate);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const entries = useMemo(() => {
+    const list = allEntries.filter((e) => e.pageId === pageId);
+    list.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+    if (sort === 'newest') list.reverse();
+    return list;
+  }, [allEntries, pageId, sort]);
+
+  // Jump to an entry / action point when navigated from an action list.
+  useEffect(() => {
+    if (!focusEntryId) return;
+    const st = useStore.getState();
+    if (st.entries.find((e) => e.id === focusEntryId)?.collapsed) st.updateEntry(focusEntryId, { collapsed: false });
+    const t = setTimeout(() => {
+      const root = listRef.current;
+      const card = root?.querySelector<HTMLElement>(`[data-entry-id="${focusEntryId}"]`);
+      const target = (focusActionId && card?.querySelector<HTMLElement>(`li[data-action-id="${focusActionId}"]`)) || card;
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.remove('flash');
+      void target.offsetWidth;
+      target.classList.add('flash');
+    }, 60);
+    return () => clearTimeout(t);
+  }, [focusEntryId, focusActionId, pageId]);
+
+  if (!page || !project) return null;
+
+  const add = (kind: EntryKind) => {
+    const id = addEntry(pageId, kind);
+    setJustAdded(id);
+    setTimeout(() => listRef.current?.querySelector(`[data-entry-id="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+  };
+
+  return (
+    <div className="view">
+      <header className="view-header">
+        <div className="grow">
+          <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'project', projectId: project.id })}>
+            <span className="dot" style={{ background: project.color }} /> {project.name}
+          </button>
+          <InlineTitle value={page.title} onChange={(t) => renamePage(pageId, t)} placeholder="Page title" />
+        </div>
+        <div className="header-actions">
+          <MenuButton items={pageMenu(pageId)} label="Page actions" />
+        </div>
+      </header>
+
+      <div className="page-toolbar">
+        <button type="button" className="btn btn-primary" onClick={() => add('meeting')}>
+          ＋ Meeting
+        </button>
+        <button type="button" className="btn btn-accent" onClick={() => add('note')}>
+          ＋ Note
+        </button>
+        <span className="grow" />
+        <button
+          type="button"
+          className="btn btn-ghost btn-small"
+          title="Change sort order"
+          onClick={() => setEntrySort(sort === 'newest' ? 'oldest' : 'newest')}
+        >
+          {sort === 'newest' ? '↓ Newest first' : '↑ Oldest first'}
+        </button>
+      </div>
+
+      <div className="entries" ref={listRef}>
+        {!entries.length && <p className="empty-hint">This page is empty. Add a meeting or a note to begin.</p>}
+        {entries.map((e) => (
+          <EntryCard key={e.id} entry={e} isNew={e.id === justAdded} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
+  const updateEntry = useStore((s) => s.updateEntry);
+  const setEntryContent = useStore((s) => s.setEntryContent);
+  const rev = useStore((s) => s.externalRev[entry.id] ?? 0);
+  const isMeeting = entry.kind === 'meeting';
+  const actions = useMemo(() => extractActions(entry.content), [entry.content]);
+  const openCount = actions.filter((a) => a.status === 'open').length;
+  const [title, setTitle] = useState(entry.title);
+  useEffect(() => setTitle(entry.title), [entry.title]);
+
+  return (
+    <article className={`entry-card kind-${entry.kind}`} data-entry-id={entry.id}>
+      <header className="entry-head">
+        <button
+          type="button"
+          className="icon-btn collapse-btn"
+          aria-label={entry.collapsed ? 'Expand' : 'Collapse'}
+          aria-expanded={!entry.collapsed}
+          onClick={() => updateEntry(entry.id, { collapsed: !entry.collapsed })}
+        >
+          {entry.collapsed ? '▸' : '▾'}
+        </button>
+        <span className={`kind-badge ${entry.kind}`}>{isMeeting ? 'Meeting' : 'Note'}</span>
+        {isMeeting ? (
+          <label className="date-chip" title="Meeting date">
+            <span className="sr-only">Meeting date</span>
+            <input type="date" value={entry.date} required onChange={(e) => e.target.value && updateEntry(entry.id, { date: e.target.value })} />
+          </label>
+        ) : null}
+        <input
+          className="entry-title"
+          value={title}
+          placeholder={isMeeting ? 'Meeting title' : 'Note title'}
+          aria-label="Title"
+          autoFocus={isNew}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => title !== entry.title && updateEntry(entry.id, { title })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+              (e.currentTarget.closest('.entry-card')?.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
+            }
+          }}
+        />
+        {openCount > 0 && (
+          <span className="badge" title={`${openCount} open action point${openCount === 1 ? '' : 's'}`}>
+            ★ {openCount}
+          </span>
+        )}
+        <MenuButton
+          label="Entry actions"
+          items={[
+            isMeeting
+              ? { label: 'Convert to note', icon: '📝', onSelect: () => updateEntry(entry.id, { kind: 'note' }) }
+              : { label: 'Convert to meeting', icon: '👥', onSelect: () => updateEntry(entry.id, { kind: 'meeting' }) },
+            ...(!isMeeting
+              ? [{ label: 'Set date to today', icon: '📅', onSelect: () => updateEntry(entry.id, { date: todayIso() }) }]
+              : []),
+            'separator',
+            { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteEntry(entry.id) },
+          ]}
+        />
+      </header>
+      {!entry.collapsed && (
+        <>
+          <NoteEditor
+            content={entry.content}
+            externalRev={rev}
+            placeholder={isMeeting ? 'Bullet points… click ☆ to make one an action point' : 'Write, paste text or images…'}
+            onChange={(c) => setEntryContent(entry.id, c)}
+          />
+          <footer className="entry-foot">
+            {isMeeting ? formatDate(entry.date) : `Note · ${formatDate(entry.date)}`} · edited {formatDateTime(entry.updatedAt)}
+          </footer>
+        </>
+      )}
+    </article>
+  );
+}
