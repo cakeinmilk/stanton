@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build installer, portable exe and zip
+        run: npm run dist -- --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stanton-windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Stanton ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/*.exe
+            release/*.zip

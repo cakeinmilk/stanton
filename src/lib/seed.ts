@@ -17,7 +17,7 @@ export function seedData(): StantonData {
   });
   return {
     ...emptyData(),
-    projects: [{ id: projectId, name: 'Getting started', color: '#0f9d8f', createdAt: now }],
+    projects: [{ id: projectId, name: 'Getting started', color: '#069494', createdAt: now }],
     pages: [{ id: pageId, projectId, title: 'Welcome to Stanton', createdAt: now }],
     entries: [
       {

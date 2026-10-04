@@ -23,4 +23,4 @@ export function formatDateTime(iso: string): string {
   return `${formatDate(todayIso(d))} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export const PROJECT_COLORS = ['#0f9d8f', '#e0b100', '#2a7fb8', '#d9603b', '#7b5ea7', '#3a9d4a', '#c2417a', '#5f6b73'];
+export const PROJECT_COLORS = ['#069494', '#e0b100', '#2a7fb8', '#d9603b', '#7b5ea7', '#3a9d4a', '#c2417a', '#5f6b73'];

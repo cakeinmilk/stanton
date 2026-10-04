@@ -36,13 +36,25 @@ npm test           # unit tests
 npm run typecheck
 ```
 
-## Building a Windows installer
+## Releases
+
+Push a version tag and GitHub Actions builds Stanton on Windows and publishes a GitHub Release
+with an installer, a portable `.exe` and a `.zip`:
+
+```bash
+npm version patch            # bumps package.json and creates a tag such as v0.1.1
+git push --follow-tags
+```
+
+The workflow can also be run by hand from the Actions tab. The build is uploaded as a workflow artifact and no release is created.
+
+## Building a Windows installer locally
 
 Run this on Windows:
 
 ```bash
 npm install
-npm run dist       # → release/Stanton Setup x.y.z.exe and a portable .exe
+npm run dist       # → release/Stanton-Setup-x.y.z.exe, a portable .exe and a .zip
 ```
 
 To cross-build from Linux or macOS, first install the Windows build of the FFI library that the dock uses:

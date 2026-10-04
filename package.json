@@ -73,15 +73,23 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "Stanton-${version}-win-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Stanton"
+      "shortcutName": "Stanton",
+      "artifactName": "Stanton-Setup-${version}.exe"
     },
     "portable": {
       "artifactName": "Stanton-${version}-portable.exe"

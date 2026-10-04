@@ -71,7 +71,7 @@ function createWindow() {
     frame: false,
     show: false,
     title: 'Stanton',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b1f1e' : '#f4fbfa',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a1e1e' : '#f3fafa',
     icon: path.join(__dirname, '../build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
