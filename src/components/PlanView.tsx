@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { JSONContent } from '@tiptap/core';
 import { useStore } from '../store';
 import { bridge, errorMessage } from '../lib/platform';
-import { buildPlanPrompt, defaultWeekStart } from '../lib/plan';
+import { buildPlanPrompt, defaultWeekStart, recentEntries } from '../lib/plan';
 import { DEFAULT_PLAN_TEMPLATE } from '../lib/seed';
 import { markdownToDoc } from '../editor/extensions';
 import { NoteEditor } from '../editor/NoteEditor';
@@ -16,8 +16,9 @@ interface PlanResult {
   rev: number;
 }
 
-// Keep the last plan while the user moves around the app.
+// Keep the last plan and picked entries while the user moves around the app.
 let lastResult: PlanResult | null = null;
+let lastPicked: string[] = [];
 
 export function PlanView() {
   const prefs = useStore((s) => s.prefs);
@@ -35,6 +36,11 @@ export function PlanView() {
   const [showTemplate, setShowTemplate] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>(lastPicked);
+  const [showPicker, setShowPicker] = useState(lastPicked.length > 0);
+  useEffect(() => {
+    lastPicked = picked;
+  }, [picked]);
 
   useEffect(() => {
     void bridge.ai.hasKey().then(setHasKey);
@@ -44,9 +50,24 @@ export function PlanView() {
   }, [result]);
 
   const plan = useMemo(
-    () => buildPlanPrompt({ projects, pages, entries }, prefs.planTemplate, { weekStart, days: prefs.planDays, includeDone: prefs.planIncludeDone }),
-    [projects, pages, entries, prefs.planTemplate, prefs.planDays, prefs.planIncludeDone, weekStart],
+    () =>
+      buildPlanPrompt({ projects, pages, entries }, prefs.planTemplate, {
+        weekStart,
+        notes: prefs.planNotes,
+        includeActions: prefs.planIncludeActions,
+        includeDone: prefs.planIncludeDone,
+        entryIds: picked,
+        days: prefs.planDays,
+      }),
+    [projects, pages, entries, prefs.planTemplate, prefs.planNotes, prefs.planIncludeActions, prefs.planIncludeDone, prefs.planDays, picked, weekStart],
   );
+  const candidates = useMemo(() => recentEntries({ projects, pages, entries }, prefs.planDays), [projects, pages, entries, prefs.planDays]);
+  const openActionCount = useMemo(
+    () => buildPlanPrompt({ projects, pages, entries }, '', { weekStart, notes: '', includeActions: true, includeDone: false, entryIds: [] }).stats.actions,
+    [projects, pages, entries, weekStart],
+  );
+  const nothingToSend = !plan.stats.notes && !plan.stats.actions && !plan.stats.entries;
+  const togglePick = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   const livePages = pages.filter((p) => !p.archivedAt && projects.some((pr) => pr.id === p.projectId && !pr.archivedAt));
   const [targetPage, setTargetPage] = useState('');
@@ -101,28 +122,92 @@ export function PlanView() {
       )}
 
       <section className="panel">
+        <div className="panel-head">
+          <h2>Your notes for this week</h2>
+          {prefs.planNotes && (
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => setPrefs({ planNotes: '' })}>
+              Clear
+            </button>
+          )}
+        </div>
+        <textarea
+          className="text-input notes-input"
+          rows={8}
+          value={prefs.planNotes}
+          onChange={(e) => setPrefs({ planNotes: e.target.value })}
+          placeholder={"Type or paste anything for this week. For example:\nStephanie's performance feedback is due, two versions (her + my boss)\nLoans CRM analysis from Stephanie needed by Wednesday\nNeed Jake to agree October dashboard thresholds before briefing Matt"}
+          aria-label="Your notes for this week"
+        />
+      </section>
+
+      <section className="panel">
         <div className="plan-options">
           <label className="field">
             <span>Week starting</span>
             <input type="date" className="text-input" value={weekStart} onChange={(e) => e.target.value && setWeekStart(e.target.value)} />
           </label>
-          <label className="field">
-            <span>Include meetings &amp; notes from</span>
-            <select className="text-input" value={prefs.planDays} onChange={(e) => setPrefs({ planDays: Number(e.target.value) })}>
-              {[3, 7, 14, 30].map((d) => (
-                <option key={d} value={d}>
-                  the last {d} days
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={prefs.planIncludeDone} onChange={(e) => setPrefs({ planIncludeDone: e.target.checked })} /> Include recently completed actions
-          </label>
+          <div className="plan-checks">
+            <label className="check">
+              <input type="checkbox" checked={prefs.planIncludeActions} onChange={(e) => setPrefs({ planIncludeActions: e.target.checked })} /> Include my open action points ({openActionCount})
+            </label>
+            {prefs.planIncludeActions && (
+              <label className="check sub">
+                <input type="checkbox" checked={prefs.planIncludeDone} onChange={(e) => setPrefs({ planIncludeDone: e.target.checked })} /> …and ones completed recently
+              </label>
+            )}
+          </div>
+        </div>
+
+        <div className="picker">
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowPicker((v) => !v)} aria-expanded={showPicker}>
+            {showPicker ? '▾' : '▸'} Add meetings &amp; notes{picked.length ? ` (${picked.length} added)` : ''}
+          </button>
+          {showPicker && (
+            <div className="picker-body">
+              <div className="picker-head">
+                <label className="check">
+                  From the last
+                  <select className="text-input small" value={prefs.planDays} onChange={(e) => setPrefs({ planDays: Number(e.target.value) })}>
+                    {[3, 7, 14, 30, 90].map((d) => (
+                      <option key={d} value={d}>
+                        {d} days
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="grow" />
+                <button type="button" className="link-btn" onClick={() => setPicked(candidates.map((c) => c.entry.id))}>
+                  Select all
+                </button>
+                <button type="button" className="link-btn" onClick={() => setPicked([])}>
+                  None
+                </button>
+              </div>
+              {!candidates.length && <p className="empty-hint">No meetings or notes in that period.</p>}
+              <ul className="picker-list">
+                {candidates.map(({ entry, page, project }) => (
+                  <li key={entry.id}>
+                    <label className="check">
+                      <input type="checkbox" checked={picked.includes(entry.id)} onChange={() => togglePick(entry.id)} />
+                      <span className="dot" style={{ background: project.color }} />
+                      <span className="picker-title">
+                        {entry.kind === 'meeting' ? `${formatDate(entry.date)} · ` : ''}
+                        {entry.title || 'Untitled'}
+                      </span>
+                      <span className="picker-meta">
+                        {project.name} › {page.title}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="plan-summary">
-          Will send <b>{plan.stats.actions}</b> action point{plan.stats.actions === 1 ? '' : 's'} and <b>{plan.stats.entries}</b> meeting{plan.stats.entries === 1 ? '' : 's'}/note
+          Will send {plan.stats.notes ? 'your notes, ' : ''}
+          <b>{plan.stats.actions}</b> action point{plan.stats.actions === 1 ? '' : 's'} and <b>{plan.stats.entries}</b> meeting{plan.stats.entries === 1 ? '' : 's'}/note
           {plan.stats.entries === 1 ? '' : 's'} to Gemini ({prefs.aiModel}).
           {plan.stats.truncated && ' Some long notes were shortened.'}{' '}
           <button type="button" className="link-btn" onClick={() => setShowPrompt((v) => !v)}>
@@ -136,7 +221,7 @@ export function PlanView() {
             {showTemplate ? '▾' : '▸'} Template
           </button>
           <span className="grow" />
-          <button type="button" className="btn btn-primary" disabled={busy || !hasKey} onClick={() => void generate()}>
+          <button type="button" className="btn btn-primary" disabled={busy || !hasKey || nothingToSend} onClick={() => void generate()}>
             {busy ? 'Generating…' : result ? '↻ Generate again' : '✦ Generate plan'}
           </button>
         </div>
@@ -144,8 +229,9 @@ export function PlanView() {
         {showTemplate && (
           <div className="template-editor">
             <p className="setting-hint">
-              Write the layout you want, in Markdown or plain text. Gemini keeps your headings and order and fills them in. Placeholders: <code>{'{{week_start}}'}</code>,{' '}
-              <code>{'{{week_end}}'}</code>, <code>{'{{today}}'}</code>.
+              This is the layout Gemini copies. Write it in Markdown: <code>**bold**</code>, <code>- bullets</code> with two-space indents for sub-bullets, and{' '}
+              <code>## headings</code>. Put instructions in [square brackets]. You can also use <code>{'{{week_start}}'}</code>, <code>{'{{week_end}}'}</code> and{' '}
+              <code>{'{{today}}'}</code>.
             </p>
             <textarea className="text-input" value={prefs.planTemplate} spellCheck onChange={(e) => setPrefs({ planTemplate: e.target.value })} rows={14} aria-label="Weekly plan template" />
             <button

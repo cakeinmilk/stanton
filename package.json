@@ -1,7 +1,7 @@
 {
   "name": "stanton",
   "productName": "Stanton",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Stanton - a lightweight, dockable meeting notes app for Windows",
   "main": "dist-electron/main.js",
   "author": "Stanton",
@@ -18,9 +18,6 @@
     "dist": "npm run build && electron-builder --win --x64",
     "dist:dir": "npm run build && electron-builder --win dir --x64"
   },
-  "dependencies": {
-    "koffi": "^3.3.2"
-  },
   "devDependencies": {
     "@tiptap/extension-image": "^3.31.4",
     "@tiptap/extension-placeholder": "^3.31.4",
@@ -36,6 +33,7 @@
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "koffi": "^3.3.2",
     "marked": "^18.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -56,10 +54,6 @@
       "dist-electron/**",
       "build/icon.png",
       "package.json"
-    ],
-    "asarUnpack": [
-      "node_modules/koffi/**",
-      "node_modules/@koromix/**"
     ],
     "win": {
       "target": [
@@ -83,7 +77,13 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "Stanton-${version}-win-${arch}.${ext}"
+      "artifactName": "Stanton-${version}-win-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "node_modules/@koromix/koffi-win32-x64/win32_x64",
+          "to": "koffi/win32_x64"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

@@ -26,86 +26,119 @@ export function fillTemplate(template: string, weekStart: string, now = new Date
 
 const MAX_ENTRY_CHARS = 4000;
 const MAX_TOTAL_CHARS = 60000;
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export interface PlanInput {
   weekStart: string;
-  days: number;
+  /** The user's own notes for the week (the main input). */
+  notes: string;
+  includeActions: boolean;
   includeDone: boolean;
-  projectIds?: string[];
+  /** Meetings/notes the user chose to add. None by default. */
+  entryIds: string[];
+  /** How far back "recently completed" looks. */
+  days?: number;
 }
 
 export interface PlanPrompt {
   system: string;
   prompt: string;
-  stats: { actions: number; entries: number; truncated: boolean };
+  stats: { actions: number; entries: number; notes: boolean; truncated: boolean };
 }
 
 export const PLAN_SYSTEM = [
-  'You turn meeting notes and action points into a weekly plan.',
-  "Follow the user's template exactly: keep its headings, their order and its formatting, and fill it in.",
+  'You turn a person\'s notes, action points and meeting notes into a clear weekly plan.',
+  "Lay the plan out exactly like the user's template: same heading, same nesting, same bold labels and the same style of wording.",
+  'Square-bracketed text in the template describes what to write there; replace it, never copy it.',
+  'Write one top-level bullet per working day (Monday to Friday). If the week has already started, begin with today and mark it "(Today)".',
+  'Give each day a short theme, a one-line Focus, then specific Action bullets.',
+  "Bold people's names and the names of key projects, reports and deliverables.",
+  'Respect any days, deadlines and dependencies mentioned (e.g. "deliver by Wednesday"), and order work so blockers are cleared first.',
   'Use only the information provided. Do not invent tasks, people or deadlines.',
-  'Spread open action points across the days sensibly, putting overdue or urgent-sounding items first.',
-  'Mention which project each item belongs to in brackets, e.g. "Send budget (Client A)".',
   'Reply with the finished plan in Markdown only, with no preamble or closing remarks.',
 ].join(' ');
 
+/** Meetings and notes the user can pick from, newest first. */
+export function recentEntries(data: Pick<StantonData, 'projects' | 'pages' | 'entries'>, days: number, now = new Date()) {
+  const since = addDays(todayIso(now), -Math.max(0, days));
+  const liveProjects = new Map(data.projects.filter((p) => !p.archivedAt).map((p) => [p.id, p]));
+  const livePages = new Map(data.pages.filter((p) => !p.archivedAt && liveProjects.has(p.projectId)).map((p) => [p.id, p]));
+  return data.entries
+    .filter((e) => livePages.has(e.pageId) && (e.date >= since || e.updatedAt.slice(0, 10) >= since))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
+    .map((e) => {
+      const page = livePages.get(e.pageId)!;
+      return { entry: e, page, project: liveProjects.get(page.projectId)! };
+    });
+}
+
 export function buildPlanPrompt(data: Pick<StantonData, 'projects' | 'pages' | 'entries'>, template: string, input: PlanInput, now = new Date()): PlanPrompt {
-  const live = (p: Project) => !p.archivedAt && (!input.projectIds || input.projectIds.includes(p.id));
-  const projects = data.projects.filter(live);
+  const projects = data.projects.filter((p: Project) => !p.archivedAt);
   const projectIds = new Set(projects.map((p) => p.id));
   const pages = data.pages.filter((p) => !p.archivedAt && projectIds.has(p.projectId));
   const pageById = new Map<string, Page>(pages.map((p) => [p.id, p]));
   const projectById = new Map(projects.map((p) => [p.id, p]));
-  const since = addDays(todayIso(now), -Math.max(0, input.days));
+  const since = addDays(todayIso(now), -Math.max(0, input.days ?? 7));
 
-  const actions = collectActionPoints(data.entries, pages, projects).filter(
-    (a) => a.status === 'open' || (input.includeDone && (a.completedAt ?? '').slice(0, 10) >= since),
-  );
+  const actions = input.includeActions
+    ? collectActionPoints(data.entries, pages, projects).filter(
+        (a) => a.status === 'open' || (input.includeDone && (a.completedAt ?? '').slice(0, 10) >= since),
+      )
+    : [];
 
-  const recent: Entry[] = data.entries
-    .filter((e) => pageById.has(e.pageId) && (e.date >= since || e.updatedAt.slice(0, 10) >= since))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const chosen = new Set(input.entryIds);
+  const entries: Entry[] = data.entries.filter((e) => chosen.has(e.id) && pageById.has(e.pageId)).sort((a, b) => a.date.localeCompare(b.date));
 
   const lines: string[] = [];
-  lines.push(`Today is ${formatDate(todayIso(now))}. Plan the week starting Monday ${formatDate(input.weekStart)}.`, '');
-  lines.push('## Template to fill in', '', fillTemplate(template, input.weekStart, now), '');
+  lines.push(`Today is ${DAY_NAMES[now.getDay()]} ${formatDate(todayIso(now))}. Plan the week starting Monday ${formatDate(input.weekStart)}.`, '');
+  lines.push('## Template (follow this layout)', '', fillTemplate(template, input.weekStart, now), '');
 
-  lines.push('## Open action points');
-  const open = actions.filter((a) => a.status === 'open');
-  if (!open.length) lines.push('(none)');
-  for (const a of open) {
-    const project = projectById.get(a.projectId)?.name ?? '';
-    lines.push(`- ${a.text} (project: ${project}; from ${a.entryKind} "${a.entryTitle || 'Untitled'}" on ${formatDate(a.entryDate)})`);
-  }
-  if (input.includeDone) {
-    lines.push('', '## Recently completed action points');
-    const done = actions.filter((a) => a.status === 'done');
-    if (!done.length) lines.push('(none)');
-    for (const a of done) lines.push(`- ${a.text} (project: ${projectById.get(a.projectId)?.name ?? ''})`);
+  const notes = input.notes.trim();
+  lines.push('## My notes for this week', notes || '(none)');
+
+  if (input.includeActions) {
+    lines.push('', '## Open action points');
+    const open = actions.filter((a) => a.status === 'open');
+    if (!open.length) lines.push('(none)');
+    for (const a of open) {
+      const project = projectById.get(a.projectId)?.name ?? '';
+      lines.push(`- ${a.text} (project: ${project}; from ${a.entryKind} "${a.entryTitle || 'Untitled'}" on ${formatDate(a.entryDate)})`);
+    }
+    if (input.includeDone) {
+      lines.push('', '## Recently completed action points');
+      const done = actions.filter((a) => a.status === 'done');
+      if (!done.length) lines.push('(none)');
+      for (const a of done) lines.push(`- ${a.text} (project: ${projectById.get(a.projectId)?.name ?? ''})`);
+    }
   }
 
-  lines.push('', `## Meetings and notes from the last ${input.days} days`);
-  let total = lines.join('\n').length;
   let truncated = false;
   let included = 0;
-  for (const e of recent) {
-    const page = pageById.get(e.pageId)!;
-    const project = projectById.get(page.projectId)!;
-    let text = nodeText(e.content, true);
-    if (text.length > MAX_ENTRY_CHARS) {
-      text = `${text.slice(0, MAX_ENTRY_CHARS)}…`;
-      truncated = true;
+  if (entries.length) {
+    lines.push('', '## Meetings and notes');
+    let total = lines.join('\n').length;
+    for (const e of entries) {
+      const page = pageById.get(e.pageId)!;
+      const project = projectById.get(page.projectId)!;
+      let text = nodeText(e.content, true);
+      if (text.length > MAX_ENTRY_CHARS) {
+        text = `${text.slice(0, MAX_ENTRY_CHARS)}…`;
+        truncated = true;
+      }
+      const block = `\n### ${e.kind === 'meeting' ? 'Meeting' : 'Note'}: ${e.title || 'Untitled'} — ${formatDate(e.date)} (${project.name} › ${page.title})\n${text || '(empty)'}`;
+      if (total + block.length > MAX_TOTAL_CHARS) {
+        truncated = true;
+        break;
+      }
+      lines.push(block);
+      total += block.length;
+      included++;
     }
-    const block = `\n### ${e.kind === 'meeting' ? 'Meeting' : 'Note'}: ${e.title || 'Untitled'} — ${formatDate(e.date)} (${project.name} › ${page.title})\n${text || '(empty)'}`;
-    if (total + block.length > MAX_TOTAL_CHARS) {
-      truncated = true;
-      break;
-    }
-    lines.push(block);
-    total += block.length;
-    included++;
   }
-  if (!recent.length) lines.push('(none)');
 
-  return { system: PLAN_SYSTEM, prompt: lines.join('\n'), stats: { actions: actions.length, entries: included, truncated } };
+  return {
+    system: PLAN_SYSTEM,
+    prompt: lines.join('\n'),
+    stats: { actions: actions.length, entries: included, notes: !!notes, truncated },
+  };
 }

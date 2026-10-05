@@ -44,6 +44,10 @@ jobs:
       - name: Build installer, portable exe and zip
         run: npm run dist -- --publish never
 
+      - name: Check the docking library is packaged
+        shell: bash
+        run: test -f release/win-unpacked/resources/koffi/win32_x64/koffi.node
+
       - uses: actions/upload-artifact@v4
         with:
           name: stanton-windows

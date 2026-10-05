@@ -64,9 +64,13 @@ export interface Prefs {
   aiModel: string;
   /** The user's weekly plan template (Markdown/plain text). */
   planTemplate: string;
-  /** How many days of meetings and notes to include. */
+  /** How many days back the meeting/note picker looks. */
   planDays: number;
   planIncludeDone: boolean;
+  /** Include open action points in the plan request. */
+  planIncludeActions: boolean;
+  /** Free-form notes typed on the Weekly plan page (kept between sessions). */
+  planNotes: string;
 }
 
 export type View =

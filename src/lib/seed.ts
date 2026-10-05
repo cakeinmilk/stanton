@@ -1,6 +1,7 @@
 import type { Prefs, StantonData } from '../types';
 
-export const DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
+/** The original (v0.2.0) default, so it can be upgraded to the new one. */
+const OLD_DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
 
 ## Top 3 priorities
 1.
@@ -24,6 +25,18 @@ export const DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
 ## Carry over / notes
 -`;
 
+export const DEFAULT_PLAN_TEMPLATE = `## 📅 Your Weekly Plan at a Glance
+
+- **[Day] (Today): [Theme for the day]**
+  - **Focus:** [One line on what the day is about.]
+  - **Action:** [A specific task. Bold **people's names** and **key items**.]
+  - **Action:** [Another task.]
+- **[Next day]: [Theme for the day]**
+  - **Focus:** [...]
+  - **Action:** [...]
+
+(Continue for each working day up to Friday.)`;
+
 export const DEFAULT_PREFS: Prefs = {
   entrySort: 'newest',
   theme: 'system',
@@ -31,6 +44,8 @@ export const DEFAULT_PREFS: Prefs = {
   planTemplate: DEFAULT_PLAN_TEMPLATE,
   planDays: 7,
   planIncludeDone: false,
+  planIncludeActions: true,
+  planNotes: '',
 };
 import { nowIso, todayIso, uid } from './util';
 
@@ -114,6 +129,12 @@ export function normalize(raw: unknown): StantonData {
     projects: Array.isArray(r.projects) ? r.projects : [],
     pages: Array.isArray(r.pages) ? r.pages : [],
     entries: Array.isArray(r.entries) ? r.entries : [],
-    prefs: { ...base.prefs, ...(r.prefs ?? {}) },
+    prefs: upgradePrefs({ ...base.prefs, ...(r.prefs ?? {}) }),
   };
+}
+
+function upgradePrefs(prefs: Prefs): Prefs {
+  // Users who never edited the old default template get the new layout.
+  if (prefs.planTemplate.trim() === OLD_DEFAULT_PLAN_TEMPLATE.trim()) return { ...prefs, planTemplate: DEFAULT_PLAN_TEMPLATE };
+  return prefs;
 }

@@ -506,3 +506,18 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .template-editor { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .plan-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
 .plan-doc { margin: 8px 0; }
+.notes-input { font-family: inherit !important; font-size: 14px !important; min-height: 140px; }
+.plan-checks { display: flex; flex-direction: column; }
+.check.sub { padding-left: 22px; height: 26px; color: var(--muted); }
+.picker { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.picker-body { margin-top: 6px; }
+.picker-head { display: flex; align-items: center; gap: 10px; }
+.text-input.small { height: 28px; padding: 0 6px; }
+.picker-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.picker-list li .check { height: auto; padding: 5px 4px; border-radius: 6px; flex-wrap: wrap; }
+.picker-list li .check:hover { background: var(--surface-2); }
+.picker-title { font-weight: 600; }
+.picker-meta { font-size: 12px; color: var(--muted); }
+/* Sub-bullets use hollow circles, like Google Docs / Gemini */
+.note-content ul ul { list-style-type: circle; }
+.note-content ul ul ul { list-style-type: square; }

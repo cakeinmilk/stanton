@@ -16,7 +16,7 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 - **Dock to the screen edge.** Use the ⇤ / ⇥ buttons in the title bar. On Windows, Stanton registers as a shell *AppBar* (the same mechanism the taskbar uses), so maximised windows fit beside it. Drag its inner edge to resize it. In the narrow docked layout, the project and page drop-downs and the ☰ drawer let you move between projects and pages.
 - **Archive or delete** projects and pages from their ⋯ menus. Archived items are listed under **Archive**, where you can restore them.
 - **Search** across page titles and note text (`Ctrl+F`).
-- **Weekly plan with Google Gemini.** Stanton sends your open action points and recent meetings to Gemini with your own template, and gets back a weekly plan. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.
+- **Weekly plan with Google Gemini.** You type or paste your notes for the week. Stanton adds your open action points (optional), plus any meetings or notes you pick (none by default), and asks Gemini for a day-by-day plan laid out like your template. Each day gets a theme, a **Focus:** line and **Action:** bullets. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.
 - **Project colours.** Each project's colour is used for its pages: the card edges, the Meeting and Note buttons, bullets, tick circles and badges. Stars are always yellow. You can pick a preset or any custom colour.
 - Teal (#069494) and yellow theme. Light and dark modes follow Windows, or you can choose one with the ◐ button or in **Settings**.
 
@@ -63,6 +63,8 @@ npm run dist       # → release/Stanton-Setup-x.y.z.exe, a portable .exe and a 
 
 To cross-build from Linux or macOS, first install the Windows build of the FFI library that the dock uses:
 `npm install --no-save --force @koromix/koffi-win32-x64`.
+
+The dock uses [koffi](https://koffi.dev). Its JavaScript is bundled into `dist-electron/main.js`. Its native `koffi.node` is copied to `resources/koffi/win32_x64/` (see `extraResources`), where koffi looks for it through `process.resourcesPath`.
 
 ## Project layout
 

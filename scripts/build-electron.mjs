@@ -7,7 +7,9 @@ const common = {
   target: 'node22',
   format: 'cjs',
   sourcemap: true,
-  external: ['electron', 'koffi'],
+  // koffi's JS is bundled; its native binary ships in resources/koffi (see package.json extraResources)
+  // and is found there through process.resourcesPath, so the @koromix packages stay external.
+  external: ['electron', '@koromix/*'],
   outdir: 'dist-electron',
   logLevel: 'info',
 };
