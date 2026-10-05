@@ -54,13 +54,25 @@ export interface StantonData {
   projects: Project[];
   pages: Page[];
   entries: Entry[];
-  prefs: {
-    entrySort: 'newest' | 'oldest';
-  };
+  prefs: Prefs;
+}
+
+export interface Prefs {
+  entrySort: 'newest' | 'oldest';
+  theme: 'system' | 'light' | 'dark';
+  /** Gemini model id used for the weekly plan, e.g. "gemini-flash-latest". */
+  aiModel: string;
+  /** The user's weekly plan template (Markdown/plain text). */
+  planTemplate: string;
+  /** How many days of meetings and notes to include. */
+  planDays: number;
+  planIncludeDone: boolean;
 }
 
 export type View =
   | { name: 'home' }
   | { name: 'project'; projectId: ID }
   | { name: 'page'; pageId: ID; focusEntryId?: ID; focusActionId?: ID }
-  | { name: 'archive' };
+  | { name: 'archive' }
+  | { name: 'plan' }
+  | { name: 'settings' };

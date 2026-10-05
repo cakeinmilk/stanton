@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react';
-import { bridge, isElectron, type DockEdge } from '../lib/platform';
+import { bridge, isElectron, type DockState } from '../lib/platform';
 import { useStore } from '../store';
 
 export function useDock() {
-  const [edge, setEdge] = useState<DockEdge>(null);
+  const [state, setState] = useState<DockState>({ edge: null, mode: null });
   useEffect(() => {
-    void bridge.getDock().then(setEdge);
-    return bridge.onDockChanged(setEdge);
+    void bridge.getDock().then(setState);
+    return bridge.onDockChanged(setState);
   }, []);
-  return edge;
+  return state;
 }
 
-export function TitleBar({ compact, onToggleNav, dock }: { compact: boolean; onToggleNav: () => void; dock: DockEdge }) {
+const THEME_NEXT = { system: 'light', light: 'dark', dark: 'system' } as const;
+const THEME_ICON = { system: '◐', light: '☀', dark: '☾' } as const;
+const THEME_LABEL = { system: 'Theme: follow Windows', light: 'Theme: light', dark: 'Theme: dark' } as const;
+
+export function TitleBar({ compact, onToggleNav, dockState }: { compact: boolean; onToggleNav: () => void; dockState: DockState }) {
   const back = useStore((s) => s.back);
   const canGoBack = useStore((s) => s.history.length > 0);
   const saveState = useStore((s) => s.saveState);
+  const theme = useStore((s) => s.prefs.theme);
+  const setPrefs = useStore((s) => s.setPrefs);
+  const navigate = useStore((s) => s.navigate);
+  const dock = dockState.edge;
+  const dockNote = dockState.mode === 'snap' ? ' (Windows did not reserve the space – see Settings)' : '';
 
   return (
     <header className={`titlebar${dock ? ' is-docked' : ''}`} onDoubleClick={(e) => e.target === e.currentTarget && !dock && bridge.toggleMaximize()}>
@@ -34,12 +43,25 @@ export function TitleBar({ compact, onToggleNav, dock }: { compact: boolean; onT
         {saveState === 'error' ? '⚠' : saveState === 'saving' ? '•' : ''}
       </span>
       <div className="drag-space" />
+      <button
+        type="button"
+        className="tb-icon"
+        aria-label={`${THEME_LABEL[theme]} (click to change)`}
+        title={`${THEME_LABEL[theme]} – click to change`}
+        onClick={() => setPrefs({ theme: THEME_NEXT[theme] })}
+      >
+        {THEME_ICON[theme]}
+      </button>
+      <button type="button" className="tb-icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: 'settings' })}>
+        ⚙
+      </button>
       {isElectron && (
         <div className="window-controls">
+          <span className="tb-sep" />
           <button
             type="button"
             className={`tb-icon dock-btn${dock === 'left' ? ' is-on' : ''}`}
-            title={dock === 'left' ? 'Undock' : 'Dock to left of screen'}
+            title={dock === 'left' ? `Undock${dockNote}` : 'Dock to left of screen'}
             aria-label={dock === 'left' ? 'Undock' : 'Dock left'}
             onClick={() => void bridge.dock(dock === 'left' ? null : 'left')}
           >
@@ -48,7 +70,7 @@ export function TitleBar({ compact, onToggleNav, dock }: { compact: boolean; onT
           <button
             type="button"
             className={`tb-icon dock-btn${dock === 'right' ? ' is-on' : ''}`}
-            title={dock === 'right' ? 'Undock' : 'Dock to right of screen'}
+            title={dock === 'right' ? `Undock${dockNote}` : 'Dock to right of screen'}
             aria-label={dock === 'right' ? 'Undock' : 'Dock right'}
             onClick={() => void bridge.dock(dock === 'right' ? null : 'right')}
           >

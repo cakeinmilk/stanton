@@ -7,6 +7,7 @@ import { InlineTitle } from './InlineTitle';
 import { deleteEntry, pageMenu } from '../lib/commands';
 import { extractActions } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
+import { projectStyle } from '../lib/theme';
 
 export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: string; focusEntryId?: string; focusActionId?: string }) {
   const page = useStore((s) => s.pages.find((p) => p.id === pageId));
@@ -54,7 +55,7 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
   };
 
   return (
-    <div className="view">
+    <div className="view themed" style={projectStyle(project.color)}>
       <header className="view-header">
         <div className="grow">
           <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'project', projectId: project.id })}>

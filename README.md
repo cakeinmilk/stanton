@@ -16,11 +16,15 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 - **Dock to the screen edge.** Use the ⇤ / ⇥ buttons in the title bar. On Windows, Stanton registers as a shell *AppBar* (the same mechanism the taskbar uses), so maximised windows fit beside it. Drag its inner edge to resize it. In the narrow docked layout, the project and page drop-downs and the ☰ drawer let you move between projects and pages.
 - **Archive or delete** projects and pages from their ⋯ menus. Archived items are listed under **Archive**, where you can restore them.
 - **Search** across page titles and note text (`Ctrl+F`).
-- Teal and yellow theme, with automatic light and dark modes.
+- **Weekly plan with Google Gemini.** Stanton sends your open action points and recent meetings to Gemini with your own template, and gets back a weekly plan. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.
+- **Project colours.** Each project's colour is used for its pages: the card edges, the Meeting and Note buttons, bullets, tick circles and badges. Stars are always yellow. You can pick a preset or any custom colour.
+- Teal (#069494) and yellow theme. Light and dark modes follow Windows, or you can choose one with the ◐ button or in **Settings**.
 
 ## Data
 
-Everything is stored locally under `%APPDATA%\Stanton\data\`:
+Everything is stored locally under `%APPDATA%\Stanton\`. Diagnostics such as docking problems are written to `stanton.log` in the same folder.
+
+The data folder `%APPDATA%\Stanton\data\` contains:
 
 - `stanton.json` holds all projects, pages and entries. It is written atomically, and the previous version is kept as `stanton.json.bak`.
 - `images\` holds pasted and inserted images.

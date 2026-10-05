@@ -6,6 +6,7 @@ import { MenuButton } from './Menu';
 import { newPage, pageMenu, projectMenu } from '../lib/commands';
 import { formatDate, PROJECT_COLORS } from '../lib/util';
 import { InlineTitle } from './InlineTitle';
+import { projectStyle } from '../lib/theme';
 
 export function ProjectView({ projectId }: { projectId: string }) {
   const project = useStore((s) => s.projects.find((p) => p.id === projectId));
@@ -32,7 +33,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const sortedPages = [...pages].sort((a, b) => (pageInfo.get(b.id)?.latest ?? b.createdAt).localeCompare(pageInfo.get(a.id)?.latest ?? a.createdAt));
 
   return (
-    <div className="view">
+    <div className="view themed" style={projectStyle(project.color)}>
       <header className="view-header">
         <div className="grow">
           <p className="eyebrow">
@@ -52,6 +53,9 @@ export function ProjectView({ projectId }: { projectId: string }) {
                 onClick={() => updateProject(projectId, { color: c })}
               />
             ))}
+            <label className={`swatch custom${PROJECT_COLORS.includes(project.color) ? '' : ' is-on'}`} title="Custom colour" style={PROJECT_COLORS.includes(project.color) ? undefined : { background: project.color }}>
+              <input type="color" value={project.color} aria-label="Custom project colour" onChange={(e) => updateProject(projectId, { color: e.target.value })} />
+            </label>
           </div>
           <MenuButton items={projectMenu(projectId)} label="Project actions" />
         </div>

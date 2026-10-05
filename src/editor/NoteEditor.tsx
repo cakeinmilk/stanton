@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
 import type { EditorView } from '@tiptap/pm/view';
 import { Selection } from '@tiptap/pm/state';
-import { ActionPoints } from './ActionPoints';
+import { baseExtensions } from './extensions';
 import { bridge } from '../lib/platform';
 
 export interface NoteEditorProps {
@@ -65,14 +61,7 @@ export function NoteEditor({ content, placeholder, externalRev, onChange, autoFo
   };
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: true, autolink: true, linkOnPaste: true } }),
-      Image.configure({ allowBase64: true, resize: { enabled: true, minWidth: 60, minHeight: 40, alwaysPreserveAspectRatio: true } }),
-      Placeholder.configure({ placeholder }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      ActionPoints,
-    ],
+    extensions: [...baseExtensions(), Placeholder.configure({ placeholder })],
     content,
     autofocus: autoFocus ? 'end' : false,
     editorProps: {

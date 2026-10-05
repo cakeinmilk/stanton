@@ -8,6 +8,7 @@
  * snapping the window to the edge of the work area.
  */
 import { BrowserWindow, Rectangle, screen } from 'electron';
+import { log } from './log';
 
 export type DockEdge = 'left' | 'right';
 
@@ -50,8 +51,9 @@ function loadNative(): Native | null {
     const shell32 = koffi.load('shell32.dll');
     const SHAppBarMessage = shell32.func('uintptr __stdcall SHAppBarMessage(uint32 dwMessage, _Inout_ APPBARDATA *pData)');
     native = { koffi, SHAppBarMessage: (m, d) => Number(SHAppBarMessage(m, d)) };
+    log('AppBar native bindings loaded');
   } catch (err) {
-    console.error('[stanton] AppBar unavailable, falling back to edge snapping', err);
+    log('AppBar unavailable, falling back to edge snapping', err);
     native = null;
   }
   return native;
@@ -81,6 +83,12 @@ export class DockController {
     return this.edge;
   }
 
+  /** 'appbar' when Windows reserves screen space for us, 'snap' when we only sit at the edge. */
+  get mode(): 'appbar' | 'snap' | null {
+    if (!this.edge) return null;
+    return this.registered ? 'appbar' : 'snap';
+  }
+
   get dockedWidth(): number {
     return this.width;
   }
@@ -90,8 +98,10 @@ export class DockController {
     this.edge = edge;
     const n = loadNative();
     if (n && !this.registered) {
-      const data = this.baseData();
+      // cbSize must be set or the shell silently rejects the request.
+      const data = this.withSize(this.baseData());
       this.registered = n.SHAppBarMessage(ABM_NEW, data) !== 0;
+      log(`AppBar ABM_NEW edge=${edge} cbSize=${data.cbSize} registered=${this.registered}`);
       this.hookMessages();
     }
     this.win.setAlwaysOnTop(true, 'normal');
@@ -188,6 +198,7 @@ export class DockController {
       if (this.edge === 'left') data.rc.right = data.rc.left + physWidth;
       else data.rc.left = data.rc.right - physWidth;
       n.SHAppBarMessage(ABM_SETPOS, data);
+      log('AppBar SETPOS', data.rc);
 
       const r = data.rc;
       const dip = screen.screenToDipRect(this.win, {

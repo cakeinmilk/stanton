@@ -4,6 +4,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { DockController, DockEdge } from './appbar';
+import { registerAiIpc } from './ai';
+import { log } from './log';
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
 
@@ -20,6 +22,7 @@ interface WindowSettings {
   bounds?: Rectangle;
   dock?: DockEdge | null;
   dockWidth?: number;
+  theme?: 'system' | 'light' | 'dark';
 }
 
 function readSettings(): WindowSettings {
@@ -55,12 +58,15 @@ function boundsAreVisible(b: Rectangle) {
   });
 }
 
+const dockState = () => ({ edge: dock?.dockedEdge ?? null, mode: dock?.mode ?? null });
+
 function sendDockState() {
-  win?.webContents.send('window:dock-changed', dock?.dockedEdge ?? null);
+  win?.webContents.send('window:dock-changed', dockState());
 }
 
 function createWindow() {
   settings = readSettings();
+  nativeTheme.themeSource = settings.theme ?? 'system';
   const defaults: Rectangle = { x: 0, y: 0, width: 1100, height: 760 };
   floatingBounds = settings.bounds && boundsAreVisible(settings.bounds) ? settings.bounds : undefined;
 
@@ -166,9 +172,16 @@ function registerIpc() {
     settings.dock = edge;
     await writeSettings(settings);
     sendDockState();
-    return edge;
+    return dockState();
   });
-  ipcMain.handle('window:get-dock', () => dock?.dockedEdge ?? null);
+  ipcMain.handle('window:get-dock', () => dockState());
+  ipcMain.handle('theme:set', async (_e, theme: 'system' | 'light' | 'dark') => {
+    nativeTheme.themeSource = theme;
+    settings.theme = theme;
+    win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0a1e1e' : '#f3fafa');
+    await writeSettings(settings);
+  });
+  registerAiIpc();
   ipcMain.on('window:minimize', () => win?.minimize());
   ipcMain.on('window:toggle-maximize', () => {
     if (!win) return;
@@ -200,6 +213,7 @@ if (!gotLock) {
       const file = path.join(imagesDir(), path.basename(decodeURIComponent(url.pathname)));
       return net.fetch(pathToFileURL(file).toString());
     });
+    log(`Stanton ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
     registerIpc();
     createWindow();
   });

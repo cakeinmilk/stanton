@@ -40,6 +40,7 @@ interface Actions {
 
   setActionStatus(entryId: ID, actionId: ID, status: ActionStatus): void;
   setEntrySort(sort: StantonData['prefs']['entrySort']): void;
+  setPrefs(patch: Partial<StantonData['prefs']>): void;
 }
 
 export type Store = StantonData & UiState & Actions;
@@ -182,6 +183,9 @@ export const useStore = create<Store>()((set, get) => {
     },
     setEntrySort(entrySort) {
       set((s) => ({ prefs: { ...s.prefs, entrySort } }));
+    },
+    setPrefs(patch) {
+      set((s) => ({ prefs: { ...s.prefs, ...patch } }));
     },
   };
 });

@@ -39,6 +39,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="nav-icon">⌂</span> Home
             {openCount > 0 && <span className="badge">★ {openCount}</span>}
           </button>
+          <button type="button" className={`nav-item${view.name === 'plan' ? ' is-active' : ''}`} onClick={() => go({ name: 'plan' })}>
+            <span className="nav-icon">✦</span> Weekly plan
+          </button>
 
           <div className="nav-section">
             <span>Projects</span>
@@ -53,7 +56,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               const projectPages = pages.filter((pg) => pg.projectId === p.id && !pg.archivedAt);
               const pc = actions.filter((a) => a.projectId === p.id && a.status === 'open').length;
               return (
-                <div key={p.id} className="nav-project">
+                <div key={p.id} className="nav-project" style={{ ['--project' as string]: p.color }}>
                   <div className={`nav-row${view.name === 'project' && view.projectId === p.id ? ' is-active' : ''}`}>
                     <button
                       type="button"

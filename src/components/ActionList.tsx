@@ -1,8 +1,10 @@
 import { useStore } from '../store';
 import type { ActionPoint, Project } from '../types';
 import { formatDate, formatDateTime } from '../lib/util';
+import { projectStyle } from '../lib/theme';
 
 export function ActionRow({ action, project, showProject }: { action: ActionPoint; project?: Project; showProject?: boolean }) {
+  const ownProject = useStore((s) => s.projects.find((p) => p.id === action.projectId));
   const setActionStatus = useStore((s) => s.setActionStatus);
   const navigate = useStore((s) => s.navigate);
   const pageTitle = useStore((s) => s.pages.find((p) => p.id === action.pageId)?.title ?? '');
@@ -10,7 +12,7 @@ export function ActionRow({ action, project, showProject }: { action: ActionPoin
   const source = `${action.entryKind === 'meeting' ? formatDate(action.entryDate) + ' · ' : ''}${action.entryTitle || 'Untitled'}`;
 
   return (
-    <li className={`action-row${done ? ' is-done' : ''}`}>
+    <li className={`action-row themed${done ? ' is-done' : ''}`} style={projectStyle((project ?? ownProject)?.color)}>
       <button
         type="button"
         className={`ap-check large${done ? ' is-done' : ''}`}

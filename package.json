@@ -1,7 +1,7 @@
 {
   "name": "stanton",
   "productName": "Stanton",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Stanton - a lightweight, dockable meeting notes app for Windows",
   "main": "dist-electron/main.js",
   "author": "Stanton",
@@ -36,6 +36,7 @@
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "marked": "^18.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "typescript": "^7.0.2",

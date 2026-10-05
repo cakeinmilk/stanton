@@ -8,7 +8,7 @@ const csp = (): Plugin => ({
   transformIndexHtml: (html) =>
     html.replace(
       '<meta charset="UTF-8" />',
-      `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: stanton: https: http:; font-src 'self' data:; connect-src 'self' stanton:" />`,
+      `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: stanton: https: http:; font-src 'self' data:; connect-src 'self' stanton: https://generativelanguage.googleapis.com" />`,
     ),
 });
 

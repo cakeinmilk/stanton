@@ -1,8 +1,41 @@
-import type { StantonData } from '../types';
+import type { Prefs, StantonData } from '../types';
+
+export const DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
+
+## Top 3 priorities
+1.
+2.
+3.
+
+## Monday
+-
+## Tuesday
+-
+## Wednesday
+-
+## Thursday
+-
+## Friday
+-
+
+## Waiting on others
+-
+
+## Carry over / notes
+-`;
+
+export const DEFAULT_PREFS: Prefs = {
+  entrySort: 'newest',
+  theme: 'system',
+  aiModel: 'gemini-flash-latest',
+  planTemplate: DEFAULT_PLAN_TEMPLATE,
+  planDays: 7,
+  planIncludeDone: false,
+};
 import { nowIso, todayIso, uid } from './util';
 
 export function emptyData(): StantonData {
-  return { version: 1, projects: [], pages: [], entries: [], prefs: { entrySort: 'newest' } };
+  return { version: 1, projects: [], pages: [], entries: [], prefs: { ...DEFAULT_PREFS } };
 }
 
 /** A small welcome project so the first launch isn't a blank screen. */
