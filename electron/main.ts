@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, Rectangle, screen, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, net, protocol, Rectangle, screen, shell } from 'electron';
 import { promises as fs, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -112,6 +112,27 @@ function createWindow() {
   win.on('moved', remember);
   win.on('maximize', () => win?.webContents.send('window:maximized', true));
   win.on('unmaximize', () => win?.webContents.send('window:maximized', false));
+
+  // Electron has no right-click menu by default: offer spelling fixes and Cut/Copy/Paste in text.
+  win.webContents.on('context-menu', (_e, params) => {
+    if (!params.isEditable && !params.selectionText) return;
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    for (const word of params.dictionarySuggestions.slice(0, 5)) {
+      items.push({ label: word, click: () => win?.webContents.replaceMisspelling(word) });
+    }
+    if (params.misspelledWord) {
+      items.push({ label: 'Add to dictionary', click: () => win?.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord) });
+      items.push({ type: 'separator' });
+    }
+    if (params.isEditable) items.push({ role: 'cut', enabled: params.editFlags.canCut });
+    items.push({ role: 'copy', enabled: params.editFlags.canCopy });
+    if (params.isEditable) {
+      items.push({ role: 'paste', enabled: params.editFlags.canPaste });
+      items.push({ role: 'pasteAndMatchStyle', label: 'Paste as plain text', enabled: params.editFlags.canPaste });
+      items.push({ type: 'separator' }, { role: 'selectAll' });
+    }
+    Menu.buildFromTemplate(items).popup({ window: win! });
+  });
 
   // Open external links in the default browser rather than inside Stanton.
   win.webContents.setWindowOpenHandler(({ url }) => {

@@ -29,6 +29,10 @@ interface Actions {
   addPage(projectId: ID, title: string): ID;
   renamePage(id: ID, title: string): void;
   movePage(id: ID, projectId: ID): void;
+  /** Reorder: put project `id` just before `beforeId` (or at the end when null). */
+  moveProjectBefore(id: ID, beforeId: ID | null): void;
+  /** Move page `id` into `projectId`, just before page `beforeId` (or at the end of that project when null). */
+  movePageTo(id: ID, projectId: ID, beforeId: ID | null): void;
   archivePage(id: ID): void;
   restorePage(id: ID): void;
   deletePage(id: ID): void;
@@ -37,6 +41,8 @@ interface Actions {
   updateEntry(id: ID, patch: Partial<Pick<Entry, 'title' | 'date' | 'kind' | 'collapsed'>>): void;
   setEntryContent(id: ID, content: JSONContent): void;
   deleteEntry(id: ID): void;
+  /** Pin/unpin an entry to its project, or change its pin icon. Doesn't count as an edit. */
+  setEntryPin(id: ID, patch: { pinned?: boolean; icon?: string | null }): void;
 
   setActionStatus(entryId: ID, actionId: ID, status: ActionStatus): void;
   setEntrySort(sort: StantonData['prefs']['entrySort']): void;
@@ -130,7 +136,34 @@ export const useStore = create<Store>()((set, get) => {
       set((s) => ({ pages: s.pages.map((p) => (p.id === id ? { ...p, title } : p)) }));
     },
     movePage(id, projectId) {
-      set((s) => ({ pages: s.pages.map((p) => (p.id === id ? { ...p, projectId } : p)) }));
+      get().movePageTo(id, projectId, null);
+    },
+    moveProjectBefore(id, beforeId) {
+      if (id === beforeId) return;
+      set((s) => {
+        const moving = s.projects.find((p) => p.id === id);
+        if (!moving) return {};
+        const rest = s.projects.filter((p) => p.id !== id);
+        const at = beforeId ? rest.findIndex((p) => p.id === beforeId) : -1;
+        rest.splice(at < 0 ? rest.length : at, 0, moving);
+        return { projects: rest };
+      });
+    },
+    movePageTo(id, projectId, beforeId) {
+      if (id === beforeId) return;
+      set((s) => {
+        const moving = s.pages.find((p) => p.id === id);
+        if (!moving) return {};
+        const rest = s.pages.filter((p) => p.id !== id);
+        let at = beforeId ? rest.findIndex((p) => p.id === beforeId) : -1;
+        if (at < 0) {
+          // After the last page of the target project, or at the very end.
+          const last = rest.map((p) => p.projectId).lastIndexOf(projectId);
+          at = last < 0 ? rest.length : last + 1;
+        }
+        rest.splice(at, 0, { ...moving, projectId });
+        return { pages: rest };
+      });
     },
     archivePage(id) {
       set((s) => ({ pages: s.pages.map((p) => (p.id === id ? { ...p, archivedAt: nowIso() } : p)) }));
@@ -171,6 +204,17 @@ export const useStore = create<Store>()((set, get) => {
     },
     deleteEntry(id) {
       set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+    },
+    setEntryPin(id, { pinned, icon }) {
+      set((s) => ({
+        entries: s.entries.map((e) => {
+          if (e.id !== id) return e;
+          const next = { ...e };
+          if (pinned !== undefined) next.pinnedAt = pinned ? e.pinnedAt ?? nowIso() : null;
+          if (icon !== undefined) next.pinIcon = icon;
+          return next;
+        }),
+      }));
     },
 
     setActionStatus(entryId, actionId, status) {

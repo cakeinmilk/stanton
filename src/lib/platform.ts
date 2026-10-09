@@ -121,5 +121,5 @@ export function errorMessage(err: unknown): string {
   return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 }
 
-export const bridge: StantonBridge = window.stanton ?? browserBridge;
-export const isElectron = !!window.stanton;
+export const bridge: StantonBridge = (typeof window !== 'undefined' && window.stanton) || browserBridge;
+export const isElectron = typeof window !== 'undefined' && !!window.stanton;

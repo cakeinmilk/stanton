@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { Entry, EntryKind } from '../types';
 import { NoteEditor } from '../editor/NoteEditor';
-import { MenuButton } from './Menu';
+import { contextMenu, MenuButton, type MenuEntry } from './Menu';
+import { PinnedStrip } from './PinnedStrip';
 import { InlineTitle } from './InlineTitle';
-import { deleteEntry, pageMenu } from '../lib/commands';
-import { extractActions } from '../lib/actions';
+import { deleteEntry, pageMenu, pinMenu } from '../lib/commands';
+import { pinIcon } from '../lib/pins';
+import { extractActions, nodeText } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
 import { projectStyle } from '../lib/theme';
 
@@ -56,7 +58,7 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
 
   return (
     <div className="view themed" style={projectStyle(project.color)}>
-      <header className="view-header">
+      <header className="view-header" onContextMenu={contextMenu(() => pageMenu(pageId))}>
         <div className="grow">
           <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'project', projectId: project.id })}>
             <span className="dot" style={{ background: project.color }} /> {project.name}
@@ -67,6 +69,8 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
           <MenuButton items={pageMenu(pageId)} label="Page actions" />
         </div>
       </header>
+
+      <PinnedStrip projectId={project.id} currentPageId={pageId} />
 
       <div className="page-toolbar">
         <button type="button" className="btn btn-primary" onClick={() => add('meeting')}>
@@ -105,10 +109,24 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
   const openCount = actions.filter((a) => a.status === 'open').length;
   const [title, setTitle] = useState(entry.title);
   useEffect(() => setTitle(entry.title), [entry.title]);
+  // Once there are notes, an empty title stays blank instead of showing "Meeting title" (it reappears on hover/focus).
+  const hasNotes = useMemo(() => nodeText(entry.content, true).trim().length > 0 || JSON.stringify(entry.content).includes('"image"'), [entry.content]);
+  const setEntryPin = useStore((s) => s.setEntryPin);
+
+  const menu = (): MenuEntry[] => [
+    ...pinMenu(entry.id),
+    'separator',
+    isMeeting
+      ? { label: 'Convert to note', icon: '📝', onSelect: () => updateEntry(entry.id, { kind: 'note' }) }
+      : { label: 'Convert to meeting', icon: '👥', onSelect: () => updateEntry(entry.id, { kind: 'meeting' }) },
+    ...(!isMeeting ? [{ label: 'Set date to today', icon: '📅', onSelect: () => updateEntry(entry.id, { date: todayIso() }) }] : []),
+    'separator',
+    { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteEntry(entry.id) },
+  ];
 
   return (
     <article className={`entry-card kind-${entry.kind}`} data-entry-id={entry.id}>
-      <header className="entry-head">
+      <header className="entry-head" onContextMenu={contextMenu(menu)}>
         <button
           type="button"
           className="icon-btn collapse-btn"
@@ -126,7 +144,7 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
           </label>
         ) : null}
         <input
-          className="entry-title"
+          className={`entry-title${!title && hasNotes ? ' quiet-placeholder' : ''}`}
           value={title}
           placeholder={isMeeting ? 'Meeting title' : 'Note title'}
           aria-label="Title"
@@ -141,24 +159,23 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
             }
           }}
         />
+        {entry.pinnedAt && (
+          <button
+            type="button"
+            className="pin-flag"
+            title="Pinned to the top of the project – click to unpin"
+            aria-label="Unpin"
+            onClick={() => setEntryPin(entry.id, { pinned: false })}
+          >
+            {pinIcon(entry)}
+          </button>
+        )}
         {openCount > 0 && (
           <span className="badge" title={`${openCount} open action point${openCount === 1 ? '' : 's'}`}>
             ★ {openCount}
           </span>
         )}
-        <MenuButton
-          label="Entry actions"
-          items={[
-            isMeeting
-              ? { label: 'Convert to note', icon: '📝', onSelect: () => updateEntry(entry.id, { kind: 'note' }) }
-              : { label: 'Convert to meeting', icon: '👥', onSelect: () => updateEntry(entry.id, { kind: 'meeting' }) },
-            ...(!isMeeting
-              ? [{ label: 'Set date to today', icon: '📅', onSelect: () => updateEntry(entry.id, { date: todayIso() }) }]
-              : []),
-            'separator',
-            { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteEntry(entry.id) },
-          ]}
-        />
+        <MenuButton label="Entry actions" items={menu()} />
       </header>
       {!entry.collapsed && (
         <>

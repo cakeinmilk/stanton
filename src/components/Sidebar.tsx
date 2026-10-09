@@ -1,8 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { useActionPoints, useLiveProjects } from '../hooks';
-import { MenuButton } from './Menu';
-import { newPage, newProject, pageMenu, projectMenu } from '../lib/commands';
+import { contextMenu, MenuButton } from './Menu';
+import { movePageWithWarning, newPage, newProject, pageMenu, projectMenu } from '../lib/commands';
+import type { DragEvent } from 'react';
+
+type Drag = { kind: 'project' | 'page'; id: string } | null;
+type Over = { id: string; kind: 'project' | 'page'; where: 'before' | 'after' | 'into' } | null;
+
+const DRAG_MIME = 'application/x-stanton';
+
+/** Upper or lower half of the row under the pointer. */
+function half(e: DragEvent): 'before' | 'after' {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+}
 import { nodeText } from '../lib/actions';
 import { formatDate } from '../lib/util';
 
@@ -19,6 +31,62 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const currentProjectId =
     view.name === 'project' ? view.projectId : view.name === 'page' ? pages.find((p) => p.id === view.pageId)?.projectId : undefined;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [drag, setDrag] = useState<Drag>(null);
+  const [over, setOver] = useState<Over>(null);
+  const moveProjectBefore = useStore((s) => s.moveProjectBefore);
+
+  const startDrag = (kind: 'project' | 'page', id: string) => (e: DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData(DRAG_MIME, id);
+    e.dataTransfer.setData('text/plain', '');
+    setDrag({ kind, id });
+  };
+  const endDrag = () => {
+    setDrag(null);
+    setOver(null);
+  };
+
+  // Hovering a project row: projects reorder (before/after); pages drop into that project.
+  const overProject = (projectId: string) => (e: DragEvent) => {
+    if (!drag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const where = drag.kind === 'project' ? half(e) : 'into';
+    if (over?.id !== projectId || over.where !== where) setOver({ id: projectId, kind: 'project', where });
+  };
+  // Hovering a page row: only pages can be dropped here.
+  const overPage = (pageId: string) => (e: DragEvent) => {
+    if (drag?.kind !== 'page') return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const where = half(e);
+    if (over?.id !== pageId || over.where !== where) setOver({ id: pageId, kind: 'page', where });
+  };
+
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const d = drag;
+    const o = over;
+    endDrag();
+    if (!d || !o || d.id === o.id) return;
+    if (d.kind === 'project' && o.kind === 'project') {
+      const i = projects.findIndex((p) => p.id === o.id);
+      const before = o.where === 'before' ? o.id : projects[i + 1]?.id ?? null;
+      if (before !== d.id) moveProjectBefore(d.id, before);
+    } else if (d.kind === 'page' && o.kind === 'project') {
+      void movePageWithWarning(d.id, o.id, null);
+    } else if (d.kind === 'page' && o.kind === 'page') {
+      const target = pages.find((p) => p.id === o.id);
+      if (!target) return;
+      const siblings = pages.filter((p) => p.projectId === target.projectId && !p.archivedAt);
+      const i = siblings.findIndex((p) => p.id === o.id);
+      const before = o.where === 'before' ? o.id : siblings[i + 1]?.id ?? null;
+      if (before !== d.id) void movePageWithWarning(d.id, target.projectId, before);
+    }
+  };
+  const dropClass = (id: string) => (over?.id === id ? ` drop-${over.where}` : '');
 
   const go = (v: Parameters<typeof navigate>[0]) => {
     navigate(v);
@@ -56,8 +124,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               const projectPages = pages.filter((pg) => pg.projectId === p.id && !pg.archivedAt);
               const pc = actions.filter((a) => a.projectId === p.id && a.status === 'open').length;
               return (
-                <div key={p.id} className="nav-project" style={{ ['--project' as string]: p.color }}>
-                  <div className={`nav-row${view.name === 'project' && view.projectId === p.id ? ' is-active' : ''}`}>
+                <div key={p.id} className={`nav-project${drag?.id === p.id ? ' is-dragging' : ''}`} style={{ ['--project' as string]: p.color }}>
+                  <div
+                    className={`nav-row${view.name === 'project' && view.projectId === p.id ? ' is-active' : ''}${dropClass(p.id)}`}
+                    draggable
+                    onDragStart={startDrag('project', p.id)}
+                    onDragEnd={endDrag}
+                    onDragOver={overProject(p.id)}
+                    onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && over?.id === p.id && setOver(null)}
+                    onDrop={drop}
+                    onContextMenu={contextMenu(() => projectMenu(p.id))}
+                    title="Drag to reorder"
+                  >
                     <button
                       type="button"
                       className="twisty"
@@ -84,7 +162,21 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   {!isCollapsed && (
                     <div className="nav-pages">
                       {projectPages.map((pg) => (
-                        <div key={pg.id} className={`nav-row page${view.name === 'page' && view.pageId === pg.id ? ' is-active' : ''}`}>
+                        <div
+                          key={pg.id}
+                          className={`nav-row page${view.name === 'page' && view.pageId === pg.id ? ' is-active' : ''}${dropClass(pg.id)}${drag?.id === pg.id ? ' is-dragging' : ''}`}
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            startDrag('page', pg.id)(e);
+                          }}
+                          onDragEnd={endDrag}
+                          onDragOver={overPage(pg.id)}
+                          onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && over?.id === pg.id && setOver(null)}
+                          onDrop={drop}
+                          onContextMenu={contextMenu(() => pageMenu(pg.id))}
+                          title="Drag to reorder, or onto another project to move it"
+                        >
                           <button type="button" className="nav-label" onClick={() => go({ name: 'page', pageId: pg.id })}>
                             <span className="truncate">{pg.title}</span>
                           </button>

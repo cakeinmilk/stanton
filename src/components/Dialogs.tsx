@@ -3,12 +3,18 @@ import { create } from 'zustand';
 
 type Dialog =
   | { kind: 'prompt'; title: string; label?: string; value: string; okLabel?: string; resolve: (v: string | null) => void }
+  | { kind: 'icon'; title: string; value: string; icons: string[]; okLabel?: string; resolve: (v: string | null) => void }
   | { kind: 'confirm'; title: string; message: string; okLabel?: string; danger?: boolean; resolve: (v: boolean) => void };
 
 const useDialogs = create<{ dialog: Dialog | null }>(() => ({ dialog: null }));
 
 export function promptDialog(title: string, value = '', opts: { label?: string; okLabel?: string } = {}): Promise<string | null> {
   return new Promise((resolve) => useDialogs.setState({ dialog: { kind: 'prompt', title, value, ...opts, resolve } }));
+}
+
+/** Pick an emoji from a grid (or type any character). Resolves to null when cancelled. */
+export function iconDialog(title: string, value: string, icons: string[]): Promise<string | null> {
+  return new Promise((resolve) => useDialogs.setState({ dialog: { kind: 'icon', title, value, icons, resolve } }));
 }
 
 export function confirmDialog(title: string, message: string, opts: { okLabel?: string; danger?: boolean } = {}): Promise<boolean> {
@@ -22,7 +28,7 @@ export function DialogHost() {
   const okRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
-    if (dialog?.kind === 'prompt') {
+    if (dialog?.kind === 'prompt' || dialog?.kind === 'icon') {
       setValue(dialog.value);
       if (inputRef.current) {
         inputRef.current.value = dialog.value;
@@ -38,7 +44,7 @@ export function DialogHost() {
 
   const close = (ok: boolean) => {
     useDialogs.setState({ dialog: null });
-    if (dialog.kind === 'prompt') dialog.resolve(ok ? value.trim() || null : null);
+    if (dialog.kind === 'prompt' || dialog.kind === 'icon') dialog.resolve(ok ? value.trim() || null : null);
     else dialog.resolve(ok);
   };
 
@@ -55,7 +61,32 @@ export function DialogHost() {
         onKeyDown={(e) => e.key === 'Escape' && close(false)}
       >
         <h2>{dialog.title}</h2>
-        {dialog.kind === 'prompt' ? (
+        {dialog.kind === 'icon' ? (
+          <>
+            <div className="icon-grid" role="listbox" aria-label="Icons">
+              {dialog.icons.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  role="option"
+                  aria-selected={value === icon}
+                  className={`icon-choice${value === icon ? ' is-on' : ''}`}
+                  onClick={() => setValue(icon)}
+                  onDoubleClick={() => {
+                    useDialogs.setState({ dialog: null });
+                    dialog.resolve(icon);
+                  }}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+            <label className="field">
+              <span>Or type / paste any emoji (Win + . opens the emoji panel)</span>
+              <input ref={inputRef} value={value} maxLength={8} onChange={(e) => setValue(e.target.value)} />
+            </label>
+          </>
+        ) : dialog.kind === 'prompt' ? (
           <label className="field">
             {dialog.label && <span>{dialog.label}</span>}
             <input ref={inputRef} value={value} onChange={(e) => setValue(e.target.value)} />

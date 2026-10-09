@@ -7,6 +7,7 @@ import { ProjectView } from './components/ProjectView';
 import { PageView } from './components/PageView';
 import { ArchiveView } from './components/ArchiveView';
 import { DialogHost } from './components/Dialogs';
+import { ContextMenuHost } from './components/Menu';
 import { SettingsView } from './components/SettingsView';
 import { PlanView } from './components/PlanView';
 import { bridge } from './lib/platform';
@@ -20,6 +21,7 @@ export function App() {
   const dockState = useDock();
   const dock = dockState.edge;
   const theme = useStore((s) => s.prefs.theme);
+  const scheme = useStore((s) => s.prefs.scheme);
   const [width, setWidth] = useState(window.innerWidth);
   const [navOpen, setNavOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -35,6 +37,9 @@ export function App() {
     document.documentElement.dataset.theme = theme;
     void bridge.setTheme(theme);
   }, [theme]);
+  useEffect(() => {
+    document.documentElement.dataset.scheme = scheme;
+  }, [scheme]);
 
   useEffect(() => {
     if (!compact) setNavOpen(false);
@@ -90,6 +95,7 @@ export function App() {
         </main>
       </div>
       <DialogHost />
+      <ContextMenuHost />
     </div>
   );
 }

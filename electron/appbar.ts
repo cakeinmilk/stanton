@@ -179,12 +179,16 @@ export class DockController {
   /** Ask the shell for space on our edge and move the window into it. */
   private reposition() {
     if (!this.edge) return;
-    const display = screen.getDisplayMatching(this.win.getBounds());
+    const wb = this.win.getBounds();
+    const display = screen.getDisplayNearestPoint({ x: Math.round(wb.x + wb.width / 2), y: Math.round(wb.y + wb.height / 2) });
+    log(`Docking ${this.edge} on display ${display.id}`, display.bounds, `scale=${display.scaleFactor}`, 'window', wb);
     const n = loadNative();
 
     if (n && this.registered) {
-      // AppBar rectangles are in physical screen pixels.
-      const phys = screen.dipToScreenRect(this.win, display.bounds);
+      // AppBar rectangles are in physical screen pixels. Convert using the *target* display
+      // (null = nearest to the rect), not the window's current one: with mixed-DPI monitors
+      // the window may still be on a different screen when we dock.
+      const phys = screen.dipToScreenRect(null, display.bounds);
       const scale = display.scaleFactor;
       const physWidth = Math.round(this.width * scale);
       const data = this.withSize(this.baseData());
@@ -201,7 +205,7 @@ export class DockController {
       log('AppBar SETPOS', data.rc);
 
       const r = data.rc;
-      const dip = screen.screenToDipRect(this.win, {
+      const dip = screen.screenToDipRect(null, {
         x: r.left,
         y: r.top,
         width: r.right - r.left,
@@ -223,13 +227,39 @@ export class DockController {
     });
   }
 
-  private setBounds(b: Rectangle) {
+  private settleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /**
+   * Move the window and make sure it actually got there. On some setups (seen on an
+   * ultrawide monitor) Windows only partly applies a large move, leaving the window
+   * short of the edge, so we check and re-apply a few times.
+   */
+  private setBounds(b: Rectangle, attempt = 0) {
     this.settingBounds = true;
+    clearTimeout(this.settleTimer);
     try {
+      if (this.win.isMaximized()) this.win.unmaximize();
+      if (attempt > 0) {
+        // Second try: move and size separately, which Windows applies more reliably.
+        this.win.setPosition(b.x, b.y);
+        this.win.setSize(b.width, b.height);
+      }
       this.win.setBounds(b);
-    } finally {
-      // 'moved'/'resized' events fire asynchronously on some platforms.
-      setTimeout(() => (this.settingBounds = false), 150);
+    } catch (err) {
+      log('setBounds failed', err);
     }
+    this.settleTimer = setTimeout(() => {
+      if (this.win.isDestroyed()) return;
+      const got = this.win.getBounds();
+      const off = Math.abs(got.x - b.x) > 2 || Math.abs(got.y - b.y) > 2 || Math.abs(got.width - b.width) > 2 || Math.abs(got.height - b.height) > 2;
+      if (off && attempt < 3) {
+        log(`Dock position mismatch (attempt ${attempt + 1}): wanted`, b, 'got', got);
+        this.setBounds(b, attempt + 1);
+        return;
+      }
+      if (off) log('Dock position still wrong after retries: wanted', b, 'got', got);
+      // 'moved'/'resized' events fire asynchronously; only listen to the user again once settled.
+      this.settingBounds = false;
+    }, 120);
   }
 }

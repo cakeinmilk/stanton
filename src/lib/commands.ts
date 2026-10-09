@@ -1,4 +1,5 @@
-import { confirmDialog, promptDialog } from '../components/Dialogs';
+import { confirmDialog, iconDialog, promptDialog } from '../components/Dialogs';
+import { PIN_ICONS, pinIcon } from './pins';
 import type { MenuEntry } from '../components/Menu';
 import { useStore } from '../store';
 import type { ID } from '../types';
@@ -65,10 +66,39 @@ export async function deleteEntry(id: ID) {
   if (ok) st().deleteEntry(id);
 }
 
+/** Move a page, asking first when it changes project (its action points move with it). */
+export async function movePageWithWarning(pageId: ID, projectId: ID, beforeId: ID | null) {
+  const page = st().pages.find((p) => p.id === pageId);
+  if (!page) return;
+  if (page.projectId !== projectId) {
+    const from = st().projects.find((p) => p.id === page.projectId)?.name ?? 'its project';
+    const to = st().projects.find((p) => p.id === projectId)?.name ?? 'another project';
+    const count = st().entries.filter((e) => e.pageId === pageId).length;
+    const ok = await confirmDialog(
+      'Move page to another project?',
+      count
+        ? `"${page.title}" and its ${count} meeting${count === 1 ? '' : 's'}/note${count === 1 ? '' : 's'} will move from ${from} to ${to}. Its action points and pins will belong to ${to} instead.`
+        : `"${page.title}" will move from ${from} to ${to}.`,
+      { okLabel: `Move to ${to}` },
+    );
+    if (!ok) return;
+  }
+  st().movePageTo(pageId, projectId, beforeId);
+}
+
+function neighbours<T extends { id: ID }>(list: T[], id: ID) {
+  const i = list.findIndex((x) => x.id === id);
+  return { prev: list[i - 1], next: list[i + 1], afterNext: list[i + 2] };
+}
+
 export function projectMenu(id: ID): MenuEntry[] {
+  const live = st().projects.filter((p) => !p.archivedAt);
+  const { prev, next, afterNext } = neighbours(live, id);
   return [
     { label: 'New page', icon: '＋', onSelect: () => void newPage(id) },
     { label: 'Rename', icon: '✎', onSelect: () => void renameProject(id) },
+    { label: 'Move up', icon: '↑', disabled: !prev, onSelect: () => prev && st().moveProjectBefore(id, prev.id) },
+    { label: 'Move down', icon: '↓', disabled: !next, onSelect: () => next && st().moveProjectBefore(id, afterNext?.id ?? null) },
     'separator',
     { label: 'Archive', icon: '🗄', onSelect: () => st().archiveProject(id) },
     { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteProject(id) },
@@ -78,11 +108,33 @@ export function projectMenu(id: ID): MenuEntry[] {
 export function pageMenu(id: ID): MenuEntry[] {
   const page = st().pages.find((p) => p.id === id);
   const others = st().projects.filter((p) => !p.archivedAt && p.id !== page?.projectId);
+  const siblings = st().pages.filter((p) => p.projectId === page?.projectId && !p.archivedAt);
+  const { prev, next, afterNext } = neighbours(siblings, id);
   return [
     { label: 'Rename', icon: '✎', onSelect: () => void renamePage(id) },
-    ...others.map((p): MenuEntry => ({ label: `Move to ${p.name}`, icon: '→', onSelect: () => st().movePage(id, p.id) })),
+    { label: 'Move up', icon: '↑', disabled: !prev, onSelect: () => page && prev && st().movePageTo(id, page.projectId, prev.id) },
+    { label: 'Move down', icon: '↓', disabled: !next, onSelect: () => page && next && st().movePageTo(id, page.projectId, afterNext?.id ?? null) },
+    ...others.map((p): MenuEntry => ({ label: `Move to ${p.name}`, icon: '→', onSelect: () => void movePageWithWarning(id, p.id, null) })),
     'separator',
     { label: 'Archive', icon: '🗄', onSelect: () => st().archivePage(id) },
     { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deletePage(id) },
   ];
+}
+
+export async function changePinIcon(entryId: ID) {
+  const e = st().entries.find((x) => x.id === entryId);
+  if (!e) return;
+  const icon = await iconDialog('Choose an icon', pinIcon(e), PIN_ICONS);
+  if (icon) st().setEntryPin(entryId, { icon });
+}
+
+export function pinMenu(entryId: ID): MenuEntry[] {
+  const e = st().entries.find((x) => x.id === entryId);
+  if (!e) return [];
+  return e.pinnedAt
+    ? [
+        { label: 'Change icon…', icon: pinIcon(e), onSelect: () => void changePinIcon(entryId) },
+        { label: 'Unpin from project', icon: '📌', onSelect: () => st().setEntryPin(entryId, { pinned: false }) },
+      ]
+    : [{ label: 'Pin to top of project', icon: '📌', onSelect: () => st().setEntryPin(entryId, { pinned: true }) }];
 }

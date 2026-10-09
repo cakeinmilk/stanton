@@ -31,6 +31,10 @@ export interface Entry {
   updatedAt: string;
   content: JSONContent;
   collapsed?: boolean;
+  /** When set, the entry is pinned to the top of its project (ordered by this time). */
+  pinnedAt?: string | null;
+  /** Emoji shown on the pinned chip. Defaults by kind. */
+  pinIcon?: string | null;
 }
 
 export type ActionStatus = 'open' | 'done';
@@ -57,9 +61,12 @@ export interface StantonData {
   prefs: Prefs;
 }
 
+export type ColorScheme = 'teal' | 'royal' | 'graphite';
+
 export interface Prefs {
   entrySort: 'newest' | 'oldest';
   theme: 'system' | 'light' | 'dark';
+  scheme: ColorScheme;
   /** Gemini model id used for the weekly plan, e.g. "gemini-flash-latest". */
   aiModel: string;
   /** The user's weekly plan template (Markdown/plain text). */

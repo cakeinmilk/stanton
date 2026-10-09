@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import { bridge, errorMessage, isElectron, type DockState } from '../lib/platform';
+import type { ColorScheme } from '../types';
+import { bridge, isElectron, type DockState } from '../lib/platform';
+import { suggestModel, useModels } from '../lib/models';
+import { ModelPicker } from './ModelPicker';
+
+const SCHEMES: { id: ColorScheme; name: string; side: string; primary: string; accent: string }[] = [
+  { id: 'teal', name: 'Teal & yellow', side: '#069494', primary: '#069494', accent: '#ffd43b' },
+  { id: 'royal', name: 'Royal blue & orange-gold', side: '#1b358a', primary: '#2244a6', accent: '#ffa62b' },
+  { id: 'graphite', name: 'Graphite & amber', side: '#22262d', primary: '#454c59', accent: '#ffad33' },
+];
 
 const AI_STUDIO_URL = 'https://aistudio.google.com/apikey';
 
 export function SettingsView({ dockState }: { dockState: DockState }) {
   const theme = useStore((s) => s.prefs.theme);
+  const scheme = useStore((s) => s.prefs.scheme);
   const setPrefs = useStore((s) => s.setPrefs);
 
   return (
@@ -31,6 +41,27 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
           ).map(([value, label]) => (
             <button key={value} type="button" className={theme === value ? 'is-on' : ''} onClick={() => setPrefs({ theme: value })}>
               {label}
+            </button>
+          ))}
+        </div>
+        <div className="scheme-grid" role="radiogroup" aria-label="Colour scheme">
+          {SCHEMES.map((sc) => (
+            <button
+              key={sc.id}
+              type="button"
+              role="radio"
+              aria-checked={scheme === sc.id}
+              className={`scheme-card${scheme === sc.id ? ' is-on' : ''}`}
+              onClick={() => setPrefs({ scheme: sc.id })}
+            >
+              <span className="scheme-preview" aria-hidden>
+                <span className="sp-side" style={{ background: sc.side }} />
+                <span className="sp-main">
+                  <span className="sp-bar" style={{ background: sc.primary, width: '70%' }} />
+                  <span className="sp-bar" style={{ background: sc.accent, width: '40%' }} />
+                </span>
+              </span>
+              <span className="scheme-name">{sc.name}</span>
             </button>
           ))}
         </div>
@@ -60,8 +91,8 @@ function GoogleAiSettings() {
   const setPrefs = useStore((s) => s.setPrefs);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [key, setKey] = useState('');
-  const [models, setModels] = useState<{ id: string; label: string }[]>([]);
   const [status, setStatus] = useState<{ kind: 'ok' | 'error' | 'busy'; text: string } | null>(null);
+  const loadList = useModels((m) => m.load);
 
   useEffect(() => {
     void bridge.ai.hasKey().then(setHasKey);
@@ -69,17 +100,14 @@ function GoogleAiSettings() {
 
   const loadModels = async () => {
     setStatus({ kind: 'busy', text: 'Checking your key…' });
-    try {
-      const list = await bridge.ai.listModels();
-      setModels(list);
-      setStatus({ kind: 'ok', text: `Connected. ${list.length} Gemini models available.` });
-      if (list.length && !list.some((m) => m.id === model)) {
-        const pick = list.find((m) => m.id === 'gemini-flash-latest') ?? list.find((m) => /flash/.test(m.id) && !/lite|image|tts|live|audio/.test(m.id)) ?? list[0];
-        setPrefs({ aiModel: pick.id });
-      }
-    } catch (err) {
-      setStatus({ kind: 'error', text: errorMessage(err) });
+    await loadList(true);
+    const { status: st, options, error } = useModels.getState();
+    if (st === 'error') {
+      setStatus({ kind: 'error', text: error ?? 'Could not reach Google.' });
+      return;
     }
+    setStatus({ kind: 'ok', text: `Connected. ${options.length} Gemini text models available.` });
+    if (options.length && !options.some((m) => m.id === model)) setPrefs({ aiModel: suggestModel(options)! });
   };
 
   const save = async () => {
@@ -93,7 +121,7 @@ function GoogleAiSettings() {
   const remove = async () => {
     await bridge.ai.setKey(null);
     setHasKey(false);
-    setModels([]);
+    useModels.setState({ options: [], status: 'idle', error: null });
     setStatus(null);
   };
 
@@ -143,21 +171,7 @@ function GoogleAiSettings() {
       </div>
       {status && <p className={`setting-status ${status.kind}`}>{status.text}</p>}
       <div className="setting-row">
-        <label className="field grow">
-          <span>Model</span>
-          {models.length ? (
-            <select className="text-input" value={model} onChange={(e) => setPrefs({ aiModel: e.target.value })}>
-              {!models.some((m) => m.id === model) && <option value={model}>{model}</option>}
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label} ({m.id})
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input className="text-input" value={model} onChange={(e) => setPrefs({ aiModel: e.target.value.trim() })} aria-label="Model" />
-          )}
-        </label>
+        <ModelPicker hasKey={!!hasKey} />
       </div>
       <p className="setting-hint">
         A Google AI Pro subscription covers the Gemini app, not API keys. API keys from AI Studio have their own free allowance, which is plenty for a weekly plan. On the free

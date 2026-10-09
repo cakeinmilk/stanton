@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { useActionPoints, useLivePages } from '../hooks';
 import { useStore } from '../store';
 import { ActionList } from './ActionList';
-import { MenuButton } from './Menu';
+import { contextMenu, MenuButton } from './Menu';
+import { PinnedStrip } from './PinnedStrip';
 import { newPage, pageMenu, projectMenu } from '../lib/commands';
 import { formatDate, PROJECT_COLORS } from '../lib/util';
 import { InlineTitle } from './InlineTitle';
@@ -28,13 +29,33 @@ export function ProjectView({ projectId }: { projectId: string }) {
     return info;
   }, [entries]);
 
+  const movePageTo = useStore((s) => s.movePageTo);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<{ id: string; where: 'before' | 'after' } | null>(null);
+
   if (!project) return null;
 
-  const sortedPages = [...pages].sort((a, b) => (pageInfo.get(b.id)?.latest ?? b.createdAt).localeCompare(pageInfo.get(a.id)?.latest ?? a.createdAt));
+  const onDragOver = (id: string) => (e: DragEvent) => {
+    if (!dragId) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    const where = e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+    if (over?.id !== id || over.where !== where) setOver({ id, where });
+  };
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    if (dragId && over && dragId !== over.id) {
+      const i = pages.findIndex((p) => p.id === over.id);
+      const before = over.where === 'before' ? over.id : pages[i + 1]?.id ?? null;
+      if (before !== dragId) movePageTo(dragId, projectId, before);
+    }
+    setDragId(null);
+    setOver(null);
+  };
 
   return (
     <div className="view themed" style={projectStyle(project.color)}>
-      <header className="view-header">
+      <header className="view-header" onContextMenu={contextMenu(() => projectMenu(projectId))}>
         <div className="grow">
           <p className="eyebrow">
             <span className="dot" style={{ background: project.color }} /> Project
@@ -61,6 +82,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
         </div>
       </header>
 
+      <PinnedStrip projectId={projectId} />
+
       <section className="panel pinned">
         <div className="panel-head">
           <h2>
@@ -79,10 +102,30 @@ export function ProjectView({ projectId }: { projectId: string }) {
         </div>
         {!pages.length && <p className="empty-hint">No pages yet. Pages hold your meetings and notes.</p>}
         <ul className="page-list">
-          {sortedPages.map((p) => {
+          {pages.map((p) => {
             const info = pageInfo.get(p.id);
             return (
-              <li key={p.id} className="page-row">
+              <li
+                key={p.id}
+                className={`page-row${over?.id === p.id ? ` drop-${over.where}` : ''}${dragId === p.id ? ' is-dragging' : ''}`}
+                draggable
+                title="Drag to reorder"
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', '');
+                  setDragId(p.id);
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setOver(null);
+                }}
+                onDragOver={onDragOver(p.id)}
+                onDrop={onDrop}
+                onContextMenu={contextMenu(() => pageMenu(p.id))}
+              >
+                <span className="drag-handle" aria-hidden>
+                  ⋮⋮
+                </span>
                 <button type="button" className="page-row-main" onClick={() => navigate({ name: 'page', pageId: p.id })}>
                   <span className="page-icon">📄</span>
                   <span className="page-row-title">{p.title}</span>

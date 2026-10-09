@@ -40,6 +40,7 @@ export const DEFAULT_PLAN_TEMPLATE = `## 📅 Your Weekly Plan at a Glance
 export const DEFAULT_PREFS: Prefs = {
   entrySort: 'newest',
   theme: 'system',
+  scheme: 'teal',
   aiModel: 'gemini-flash-latest',
   planTemplate: DEFAULT_PLAN_TEMPLATE,
   planDays: 7,

@@ -14,11 +14,15 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
   - Click an action point to jump to the meeting it came from.
 - **Rich notes.** Bold, italic, underline, headings, bullet and numbered lists, checklists and links. You can paste or drag in images and resize them. Pasted HTML from web pages and Office keeps its formatting.
 - **Dock to the screen edge.** Use the ⇤ / ⇥ buttons in the title bar. On Windows, Stanton registers as a shell *AppBar* (the same mechanism the taskbar uses), so maximised windows fit beside it. Drag its inner edge to resize it. In the narrow docked layout, the project and page drop-downs and the ☰ drawer let you move between projects and pages.
+- **Organise by drag and drop.** Drag projects up or down in the sidebar. Drag pages to reorder them, either in the sidebar or on the project page. To move a page to another project, drop it on that project; Stanton asks you to confirm first. The ⋯ and right-click menus also have Move up and Move down.
+- **Right-click menus.** Right-click a project or page header, a sidebar row or a meeting/note header to get the same options as its ⋯ menu. In text, right-click gives Cut/Copy/Paste and spelling suggestions.
+- **Pinned notes.** Pin any meeting or note to its project from its ⋯ or right-click menu. Pinned items appear as chips with a name and an icon at the top of the project and each of its pages; click one to jump to it. Right-click a chip to change its icon or unpin it.
 - **Archive or delete** projects and pages from their ⋯ menus. Archived items are listed under **Archive**, where you can restore them.
 - **Search** across page titles and note text (`Ctrl+F`).
 - **Weekly plan with Google Gemini.** You type or paste your notes for the week. Stanton adds your open action points (optional), plus any meetings or notes you pick (none by default), and asks Gemini for a day-by-day plan laid out like your template. Each day gets a theme, a **Focus:** line and **Action:** bullets. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.
 - **Project colours.** Each project's colour is used for its pages: the card edges, the Meeting and Note buttons, bullets, tick circles and badges. Stars are always yellow. You can pick a preset or any custom colour.
-- Teal (#069494) and yellow theme. Light and dark modes follow Windows, or you can choose one with the ◐ button or in **Settings**.
+- **Colour schemes:** Teal & yellow (#069494), Royal blue & orange-gold, or Graphite & amber. Each has light and dark modes, which follow Windows or can be set with the ◐ button or in **Settings**. Stars are always yellow.
+- **Gemini model picker** on the Weekly plan page and in Settings. Models are grouped Lite / Flash / Pro, lightest first.
 
 ## Data
 

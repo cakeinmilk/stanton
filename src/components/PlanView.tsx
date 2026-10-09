@@ -9,6 +9,8 @@ import { NoteEditor } from '../editor/NoteEditor';
 import { copyDoc, docToPlainText, gmailComposeUrl } from '../lib/export';
 import { formatDate } from '../lib/util';
 import { confirmDialog } from './Dialogs';
+import { ModelPicker } from './ModelPicker';
+import { suggestModel, useModels } from '../lib/models';
 
 interface PlanResult {
   doc: JSONContent;
@@ -45,6 +47,11 @@ export function PlanView() {
   useEffect(() => {
     void bridge.ai.hasKey().then(setHasKey);
   }, []);
+  // If the saved model isn't offered to this key (e.g. retired), switch to the lightest available one.
+  const modelOptions = useModels((m) => m.options);
+  useEffect(() => {
+    if (modelOptions.length && !modelOptions.some((m) => m.id === prefs.aiModel)) setPrefs({ aiModel: suggestModel(modelOptions)! });
+  }, [modelOptions]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     lastResult = result;
   }, [result]);
@@ -220,7 +227,7 @@ export function PlanView() {
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowTemplate((v) => !v)} aria-expanded={showTemplate}>
             {showTemplate ? '▾' : '▸'} Template
           </button>
-          <span className="grow" />
+          <ModelPicker hasKey={!!hasKey} compact />
           <button type="button" className="btn btn-primary" disabled={busy || !hasKey || nothingToSend} onClick={() => void generate()}>
             {busy ? 'Generating…' : result ? '↻ Generate again' : '✦ Generate plan'}
           </button>
