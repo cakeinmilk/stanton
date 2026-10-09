@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { JSONContent } from '@tiptap/react';
-import type { ActionStatus, Entry, EntryKind, ID, Project, StantonData, View } from './types';
+import type { ActionStatus, Entry, EntryKind, ID, ImportantDate, Project, StantonData, View } from './types';
 import { emptyData, normalize, seedData } from './lib/seed';
 import { nowIso, PROJECT_COLORS, todayIso, uid } from './lib/util';
-import { setActionStatusInContent } from './lib/actions';
+import { setActionStatusInContent, wholeActionId } from './lib/actions';
 import { bridge } from './lib/platform';
 
 interface UiState {
@@ -43,6 +43,15 @@ interface Actions {
   deleteEntry(id: ID): void;
   /** Pin/unpin an entry to its project, or change its pin icon. Doesn't count as an edit. */
   setEntryPin(id: ID, patch: { pinned?: boolean; icon?: string | null }): void;
+  /** Make a whole meeting/note an action point (or not). */
+  setEntryAction(id: ID, status: ActionStatus | null): void;
+
+  addDate(projectId: ID, date: string, label: string): void;
+  updateDate(projectId: ID, dateId: ID, patch: Partial<Pick<ImportantDate, 'date' | 'label'>>): void;
+  removeDate(projectId: ID, dateId: ID): void;
+
+  /** Add imported projects/pages/entries (already given fresh ids). */
+  importData(data: Pick<StantonData, 'projects' | 'pages' | 'entries'>): void;
 
   setActionStatus(entryId: ID, actionId: ID, status: ActionStatus): void;
   setEntrySort(sort: StantonData['prefs']['entrySort']): void;
@@ -205,6 +214,27 @@ export const useStore = create<Store>()((set, get) => {
     deleteEntry(id) {
       set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
     },
+    setEntryAction(id, status) {
+      set((s) => ({
+        entries: s.entries.map((e) => (e.id === id ? { ...e, action: status, actionDoneAt: status === 'done' ? nowIso() : null } : e)),
+      }));
+    },
+    addDate(projectId, date, label) {
+      set((s) => ({
+        projects: s.projects.map((p) => (p.id === projectId ? { ...p, dates: [...(p.dates ?? []), { id: uid(), date, label: label.trim() || 'Untitled date' }] } : p)),
+      }));
+    },
+    updateDate(projectId, dateId, patch) {
+      set((s) => ({
+        projects: s.projects.map((p) => (p.id === projectId ? { ...p, dates: (p.dates ?? []).map((d) => (d.id === dateId ? { ...d, ...patch } : d)) } : p)),
+      }));
+    },
+    removeDate(projectId, dateId) {
+      set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, dates: (p.dates ?? []).filter((d) => d.id !== dateId) } : p)) }));
+    },
+    importData(data) {
+      set((s) => ({ projects: [...s.projects, ...data.projects], pages: [...s.pages, ...data.pages], entries: [...s.entries, ...data.entries] }));
+    },
     setEntryPin(id, { pinned, icon }) {
       set((s) => ({
         entries: s.entries.map((e) => {
@@ -220,6 +250,12 @@ export const useStore = create<Store>()((set, get) => {
     setActionStatus(entryId, actionId, status) {
       const entry = get().entries.find((e) => e.id === entryId);
       if (!entry) return;
+      if (actionId === wholeActionId(entryId)) {
+        set((s) => ({
+          entries: s.entries.map((e) => (e.id === entryId ? { ...e, action: status, actionDoneAt: status === 'done' ? nowIso() : null } : e)),
+        }));
+        return;
+      }
       const { content, changed } = setActionStatusInContent(entry.content, actionId, status, nowIso());
       if (!changed) return;
       touchEntry(entryId, { content });

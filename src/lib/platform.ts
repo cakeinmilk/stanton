@@ -27,7 +27,16 @@ export interface StantonBridge {
   close(): void;
   openExternal(url: string): Promise<void>;
   setTheme(theme: ThemePref): Promise<void>;
+  setMinimizeToTray(on: boolean): Promise<void>;
+  /** Ask where to save, then write the file. Resolves to the saved path, or null if cancelled. */
+  saveFile(name: string, content: string, filters: FileFilter[]): Promise<string | null>;
+  openFile(filters: FileFilter[]): Promise<{ name: string; content: string } | null>;
   ai: AiBridge;
+}
+
+export interface FileFilter {
+  name: string;
+  extensions: string[];
 }
 
 declare global {
@@ -112,6 +121,28 @@ const browserBridge: StantonBridge = {
     window.open(url, '_blank', 'noopener');
   },
   async setTheme() {},
+  async setMinimizeToTray() {},
+  async saveFile(name, content, filters) {
+    const type = filters[0]?.extensions[0] === 'html' ? 'text/html' : filters[0]?.extensions[0] === 'md' ? 'text/markdown' : 'application/json';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return name;
+  },
+  openFile(filters) {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = filters.flatMap((f) => f.extensions.map((e) => `.${e}`)).join(',');
+      input.onchange = async () => {
+        const f = input.files?.[0];
+        resolve(f ? { name: f.name, content: await f.text() } : null);
+      };
+      input.click();
+    });
+  },
   ai: browserAi,
 };
 

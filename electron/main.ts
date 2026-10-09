@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, net, protocol, Rectangle, screen, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, net, protocol, Rectangle, screen, shell, Tray } from 'electron';
 import { promises as fs, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -23,6 +23,7 @@ interface WindowSettings {
   dock?: DockEdge | null;
   dockWidth?: number;
   theme?: 'system' | 'light' | 'dark';
+  minimizeToTray?: boolean;
 }
 
 function readSettings(): WindowSettings {
@@ -50,6 +51,46 @@ let win: BrowserWindow | null = null;
 let dock: DockController | null = null;
 let settings: WindowSettings = {};
 let floatingBounds: Rectangle | undefined;
+let tray: Tray | null = null;
+let quitting = false;
+
+const iconPath = () => path.join(__dirname, '../build/icon.png');
+
+function showFromTray() {
+  if (!win) return;
+  win.show();
+  if (win.isMinimized()) win.restore();
+  dock?.resume();
+  win.focus();
+  tray?.destroy();
+  tray = null;
+}
+
+/** Hide to the notification area. A docked Stanton gives its screen strip back while hidden. */
+function hideToTray() {
+  if (!win) return;
+  dock?.suspend();
+  win.hide();
+  if (!tray) {
+    const img = nativeImage.createFromPath(iconPath()).resize({ width: 16, height: 16 });
+    tray = new Tray(img);
+    tray.setToolTip('Stanton – click to open');
+    tray.on('click', showFromTray);
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open Stanton', click: showFromTray },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          click: () => {
+            quitting = true;
+            app.quit();
+          },
+        },
+      ]),
+    );
+  }
+}
 
 function boundsAreVisible(b: Rectangle) {
   return screen.getAllDisplays().some((d) => {
@@ -110,6 +151,9 @@ function createWindow() {
   };
   win.on('resized', remember);
   win.on('moved', remember);
+  win.on('minimize', () => {
+    if ((settings.minimizeToTray ?? true) && !quitting) setTimeout(hideToTray, 0);
+  });
   win.on('maximize', () => win?.webContents.send('window:maximized', true));
   win.on('unmaximize', () => win?.webContents.send('window:maximized', false));
 
@@ -203,7 +247,29 @@ function registerIpc() {
     await writeSettings(settings);
   });
   registerAiIpc();
-  ipcMain.on('window:minimize', () => win?.minimize());
+  ipcMain.on('window:minimize', () => {
+    if (settings.minimizeToTray ?? true) hideToTray();
+    else win?.minimize();
+  });
+  ipcMain.handle('file:save', async (_e, name: string, content: string, filters: Electron.FileFilter[]) => {
+    if (!win) return null;
+    const res = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), name), filters });
+    if (res.canceled || !res.filePath) return null;
+    await fs.writeFile(res.filePath, content, 'utf8');
+    log('Exported', res.filePath, `${content.length} chars`);
+    return res.filePath;
+  });
+  ipcMain.handle('file:open', async (_e, filters: Electron.FileFilter[]) => {
+    if (!win) return null;
+    const res = await dialog.showOpenDialog(win, { properties: ['openFile'], filters });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const file = res.filePaths[0];
+    return { name: path.basename(file), content: await fs.readFile(file, 'utf8') };
+  });
+  ipcMain.handle('tray:set', async (_e, on: boolean) => {
+    settings.minimizeToTray = on;
+    await writeSettings(settings);
+  });
   ipcMain.on('window:toggle-maximize', () => {
     if (!win) return;
     if (dock?.dockedEdge) return; // maximising a docked bar makes no sense
@@ -222,6 +288,7 @@ if (!gotLock) {
 } else {
   app.on('second-instance', () => {
     if (!win) return;
+    if (!win.isVisible() || tray) showFromTray();
     if (win.isMinimized()) win.restore();
     win.focus();
   });
@@ -239,6 +306,10 @@ if (!gotLock) {
     createWindow();
   });
 
-  app.on('before-quit', () => dock?.dispose());
+  app.on('before-quit', () => {
+    quitting = true;
+    dock?.dispose();
+    tray?.destroy();
+  });
   app.on('window-all-closed', () => app.quit());
 }

@@ -1,5 +1,8 @@
-import { confirmDialog, iconDialog, promptDialog } from '../components/Dialogs';
+import { confirmDialog, iconDialog, promptDialog, toast } from '../components/Dialogs';
+import { exportHtml, exportMarkdown, exportStanton, importStanton } from './backup';
+import { errorMessage } from './platform';
 import { PIN_ICONS, pinIcon } from './pins';
+import { PinIcon } from '../components/Icons';
 import type { MenuEntry } from '../components/Menu';
 import { useStore } from '../store';
 import type { ID } from '../types';
@@ -99,6 +102,7 @@ export function projectMenu(id: ID): MenuEntry[] {
     { label: 'Rename', icon: '✎', onSelect: () => void renameProject(id) },
     { label: 'Move up', icon: '↑', disabled: !prev, onSelect: () => prev && st().moveProjectBefore(id, prev.id) },
     { label: 'Move down', icon: '↓', disabled: !next, onSelect: () => next && st().moveProjectBefore(id, afterNext?.id ?? null) },
+    { label: 'Export project', icon: '⇪', submenu: exportMenu(id) },
     'separator',
     { label: 'Archive', icon: '🗄', onSelect: () => st().archiveProject(id) },
     { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteProject(id) },
@@ -114,7 +118,12 @@ export function pageMenu(id: ID): MenuEntry[] {
     { label: 'Rename', icon: '✎', onSelect: () => void renamePage(id) },
     { label: 'Move up', icon: '↑', disabled: !prev, onSelect: () => page && prev && st().movePageTo(id, page.projectId, prev.id) },
     { label: 'Move down', icon: '↓', disabled: !next, onSelect: () => page && next && st().movePageTo(id, page.projectId, afterNext?.id ?? null) },
-    ...others.map((p): MenuEntry => ({ label: `Move to ${p.name}`, icon: '→', onSelect: () => void movePageWithWarning(id, p.id, null) })),
+    {
+      label: 'Move to project',
+      icon: '→',
+      disabled: !others.length,
+      submenu: others.map((p): MenuEntry => ({ label: p.name, icon: <span className="dot" style={{ background: p.color }} />, onSelect: () => void movePageWithWarning(id, p.id, null) })),
+    },
     'separator',
     { label: 'Archive', icon: '🗄', onSelect: () => st().archivePage(id) },
     { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deletePage(id) },
@@ -124,17 +133,46 @@ export function pageMenu(id: ID): MenuEntry[] {
 export async function changePinIcon(entryId: ID) {
   const e = st().entries.find((x) => x.id === entryId);
   if (!e) return;
-  const icon = await iconDialog('Choose an icon', pinIcon(e), PIN_ICONS);
+  const icon = await iconDialog('Choose an icon', pinIcon(e) ?? '', PIN_ICONS);
   if (icon) st().setEntryPin(entryId, { icon });
 }
 
 export function pinMenu(entryId: ID): MenuEntry[] {
   const e = st().entries.find((x) => x.id === entryId);
   if (!e) return [];
+  const pin = <PinIcon size={15} />;
   return e.pinnedAt
     ? [
-        { label: 'Change icon…', icon: pinIcon(e), onSelect: () => void changePinIcon(entryId) },
-        { label: 'Unpin from project', icon: '📌', onSelect: () => st().setEntryPin(entryId, { pinned: false }) },
+        { label: 'Change pin icon…', icon: pinIcon(e) ?? pin, onSelect: () => void changePinIcon(entryId) },
+        ...(e.pinIcon ? [{ label: 'Use the standard pin icon', icon: pin, onSelect: () => st().setEntryPin(entryId, { icon: null }) }] : []),
+        { label: 'Unpin', icon: pin, onSelect: () => st().setEntryPin(entryId, { pinned: false }) },
       ]
-    : [{ label: 'Pin to top of project', icon: '📌', onSelect: () => st().setEntryPin(entryId, { pinned: true }) }];
+    : [{ label: 'Pin to page & project', icon: pin, onSelect: () => st().setEntryPin(entryId, { pinned: true }) }];
+}
+
+async function runExport(fn: () => Promise<string | null>) {
+  try {
+    const path = await fn();
+    if (path) toast(`Exported to ${path}`);
+  } catch (err) {
+    toast(`Export failed: ${errorMessage(err)}`, 'error');
+  }
+}
+
+/** Export choices for one project, or everything when no id is given. */
+export function exportMenu(projectId?: ID): MenuEntry[] {
+  return [
+    { label: 'Stanton backup (.stanton) – re-importable', icon: '💾', onSelect: () => void runExport(() => exportStanton(projectId)) },
+    { label: 'Web page (.html) – for Word, OneNote, email', icon: '🌐', onSelect: () => void runExport(() => exportHtml(projectId)) },
+    { label: 'Markdown (.md) – for Obsidian, Notion etc.', icon: 'Ⓜ', onSelect: () => void runExport(() => exportMarkdown(projectId)) },
+  ];
+}
+
+export async function runImport() {
+  try {
+    const res = await importStanton();
+    if (res) toast(`Imported ${res.projects} project${res.projects === 1 ? '' : 's'}, ${res.pages} page${res.pages === 1 ? '' : 's'} and ${res.entries} meeting${res.entries === 1 ? '' : 's'}/note${res.entries === 1 ? '' : 's'}.`);
+  } catch (err) {
+    toast(`Import failed: ${errorMessage(err)}`, 'error');
+  }
 }

@@ -6,7 +6,7 @@ import { HomeView } from './components/HomeView';
 import { ProjectView } from './components/ProjectView';
 import { PageView } from './components/PageView';
 import { ArchiveView } from './components/ArchiveView';
-import { DialogHost } from './components/Dialogs';
+import { DialogHost, ToastHost } from './components/Dialogs';
 import { ContextMenuHost } from './components/Menu';
 import { SettingsView } from './components/SettingsView';
 import { PlanView } from './components/PlanView';
@@ -40,6 +40,10 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
   }, [scheme]);
+  const minimizeToTray = useStore((s) => s.prefs.minimizeToTray);
+  useEffect(() => {
+    if (loaded) void bridge.setMinimizeToTray(minimizeToTray);
+  }, [minimizeToTray, loaded]);
 
   useEffect(() => {
     if (!compact) setNavOpen(false);
@@ -96,6 +100,7 @@ export function App() {
       </div>
       <DialogHost />
       <ContextMenuHost />
+      <ToastHost />
     </div>
   );
 }

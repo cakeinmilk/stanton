@@ -2,6 +2,7 @@ import { useStore } from '../store';
 import type { ActionPoint, Project } from '../types';
 import { formatDate, formatDateTime } from '../lib/util';
 import { projectStyle } from '../lib/theme';
+import { FlagIcon } from './Icons';
 
 export function ActionRow({ action, project, showProject }: { action: ActionPoint; project?: Project; showProject?: boolean }) {
   const ownProject = useStore((s) => s.projects.find((p) => p.id === action.projectId));
@@ -28,8 +29,16 @@ export function ActionRow({ action, project, showProject }: { action: ActionPoin
         title="Open the meeting or note this came from"
         onClick={() => navigate({ name: 'page', pageId: action.pageId, focusEntryId: action.entryId, focusActionId: action.id })}
       >
-        <span className="action-text">{action.text}</span>
+        <span className="action-text">
+          {action.whole && (
+            <span className="whole-tag" title={`The whole ${action.entryKind} is the action point`}>
+              <FlagIcon size={13} filled /> {action.entryKind === 'meeting' ? 'Meeting' : 'Note'}
+            </span>
+          )}
+          {action.text}
+        </span>
         <span className="action-meta">
+          {/* whole-entry actions already name the entry in their text */}
           {showProject && project && (
             <span className="project-chip" style={{ ['--chip' as string]: project.color }}>
               {project.name}

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { useActionPoints, useLiveProjects } from '../hooks';
 import { useStore } from '../store';
 import { ActionList } from './ActionList';
-import { newProject } from '../lib/commands';
+import { newProject, projectMenu } from '../lib/commands';
+import { contextMenu, MenuButton } from './Menu';
+import { UpcomingDates } from './ImportantDates';
 import { formatDate, todayIso } from '../lib/util';
 
 export function HomeView() {
@@ -11,6 +13,8 @@ export function HomeView() {
   const navigate = useStore((s) => s.navigate);
   const [grouped, setGrouped] = useState(true);
   const [showDone, setShowDone] = useState(false);
+  const projectsView = useStore((s) => s.prefs.homeProjectsView);
+  const setPrefs = useStore((s) => s.setPrefs);
 
   const open = actions.filter((a) => a.status === 'open');
   const done = useMemo(
@@ -26,6 +30,8 @@ export function HomeView() {
           <h1>Home</h1>
         </div>
       </header>
+
+      <UpcomingDates />
 
       <section className="panel pinned">
         <div className="panel-head">
@@ -71,16 +77,34 @@ export function HomeView() {
       <section className="panel">
         <div className="panel-head">
           <h2>Projects</h2>
-          <button type="button" className="btn btn-small" onClick={() => void newProject()}>
-            ＋ New project
-          </button>
+          <div className="header-actions">
+            <div className="seg" role="group" aria-label="Show projects as">
+              <button type="button" className={projectsView === 'cards' ? 'is-on' : ''} onClick={() => setPrefs({ homeProjectsView: 'cards' })}>
+                ▦ Cards
+              </button>
+              <button type="button" className={projectsView === 'list' ? 'is-on' : ''} onClick={() => setPrefs({ homeProjectsView: 'list' })}>
+                ☰ List
+              </button>
+            </div>
+            <button type="button" className="btn btn-small" onClick={() => void newProject()}>
+              ＋ New project
+            </button>
+          </div>
         </div>
         {!projects.length && <p className="empty-hint">Create a project to get started.</p>}
-        <div className="card-grid">
-          {projects.map((p) => (
-            <ProjectCard key={p.id} projectId={p.id} openCount={open.filter((a) => a.projectId === p.id).length} />
-          ))}
-        </div>
+        {projectsView === 'cards' ? (
+          <div className="card-grid">
+            {projects.map((p) => (
+              <ProjectCard key={p.id} projectId={p.id} openCount={open.filter((a) => a.projectId === p.id).length} />
+            ))}
+          </div>
+        ) : (
+          <ul className="project-list page-list">
+            {projects.map((p) => (
+              <ProjectListRow key={p.id} projectId={p.id} openCount={open.filter((a) => a.projectId === p.id).length} />
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
@@ -91,12 +115,33 @@ function ProjectCard({ projectId, openCount }: { projectId: string; openCount: n
   const pageCount = useStore((s) => s.pages.filter((p) => p.projectId === projectId && !p.archivedAt).length);
   const navigate = useStore((s) => s.navigate);
   return (
-    <button type="button" className="card project-card" style={{ ['--accent' as string]: project.color }} onClick={() => navigate({ name: 'project', projectId })}>
+    <button type="button" className="card project-card" style={{ ["--accent" as string]: project.color }} onClick={() => navigate({ name: "project", projectId })} onContextMenu={contextMenu(() => projectMenu(projectId))}>
       <span className="card-title">{project.name}</span>
       <span className="card-meta">
         {pageCount} page{pageCount === 1 ? '' : 's'}
         {openCount > 0 && <span className="badge">★ {openCount}</span>}
       </span>
     </button>
+  );
+}
+
+function ProjectListRow({ projectId, openCount }: { projectId: string; openCount: number }) {
+  const project = useStore((s) => s.projects.find((p) => p.id === projectId))!;
+  const pageCount = useStore((s) => s.pages.filter((p) => p.projectId === projectId && !p.archivedAt).length);
+  const navigate = useStore((s) => s.navigate);
+  const next = (project.dates ?? []).filter((d) => d.date >= todayIso()).sort((a, b) => a.date.localeCompare(b.date))[0];
+  return (
+    <li className="page-row" onContextMenu={contextMenu(() => projectMenu(projectId))}>
+      <button type="button" className="page-row-main" onClick={() => navigate({ name: 'project', projectId })}>
+        <span className="dot" style={{ background: project.color }} />
+        <span className="page-row-title">{project.name}</span>
+        <span className="card-meta">
+          {next && `${formatDate(next.date)}: ${next.label} · `}
+          {pageCount} page{pageCount === 1 ? '' : 's'}
+          {openCount > 0 && <span className="badge">★ {openCount}</span>}
+        </span>
+      </button>
+      <MenuButton items={projectMenu(projectId)} label="Project actions" />
+    </li>
   );
 }

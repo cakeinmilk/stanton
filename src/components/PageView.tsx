@@ -7,6 +7,7 @@ import { PinnedStrip } from './PinnedStrip';
 import { InlineTitle } from './InlineTitle';
 import { deleteEntry, pageMenu, pinMenu } from '../lib/commands';
 import { pinIcon } from '../lib/pins';
+import { FlagIcon, PinIcon } from './Icons';
 import { extractActions, nodeText } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
 import { projectStyle } from '../lib/theme';
@@ -70,7 +71,7 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
         </div>
       </header>
 
-      <PinnedStrip projectId={project.id} currentPageId={pageId} />
+      <PinnedStrip projectId={project.id} pageId={pageId} />
 
       <div className="page-toolbar">
         <button type="button" className="btn btn-primary" onClick={() => add('meeting')}>
@@ -112,8 +113,12 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
   // Once there are notes, an empty title stays blank instead of showing "Meeting title" (it reappears on hover/focus).
   const hasNotes = useMemo(() => nodeText(entry.content, true).trim().length > 0 || JSON.stringify(entry.content).includes('"image"'), [entry.content]);
   const setEntryPin = useStore((s) => s.setEntryPin);
+  const setEntryAction = useStore((s) => s.setEntryAction);
 
   const menu = (): MenuEntry[] => [
+    entry.action
+      ? { label: `Remove ${entry.kind} action point`, icon: <FlagIcon size={15} />, onSelect: () => setEntryAction(entry.id, null) }
+      : { label: `Make whole ${entry.kind} an action point`, icon: <FlagIcon size={15} filled />, onSelect: () => setEntryAction(entry.id, 'open') },
     ...pinMenu(entry.id),
     'separator',
     isMeeting
@@ -125,7 +130,7 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
   ];
 
   return (
-    <article className={`entry-card kind-${entry.kind}`} data-entry-id={entry.id}>
+    <article className={`entry-card kind-${entry.kind}${entry.action ? ` whole-${entry.action}` : ''}`} data-entry-id={entry.id}>
       <header className="entry-head" onContextMenu={contextMenu(menu)}>
         <button
           type="button"
@@ -152,6 +157,11 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => title !== entry.title && updateEntry(entry.id, { title })}
           onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+              e.preventDefault();
+              setEntryAction(entry.id, entry.action ? null : 'open');
+              return;
+            }
             if (e.key === 'Enter') {
               e.preventDefault();
               (e.target as HTMLInputElement).blur();
@@ -163,11 +173,32 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
           <button
             type="button"
             className="pin-flag"
-            title="Pinned to the top of the project – click to unpin"
+            title="Pinned to this page and its project – click to unpin"
             aria-label="Unpin"
             onClick={() => setEntryPin(entry.id, { pinned: false })}
           >
-            {pinIcon(entry)}
+            {pinIcon(entry) ?? <PinIcon size={16} />}
+          </button>
+        )}
+        <button
+          type="button"
+          className={`whole-action${entry.action ? ` is-${entry.action}` : ''}`}
+          title={entry.action ? 'This whole ' + entry.kind + ' is an action point – click to remove' : `Make this whole ${entry.kind} an action point (Ctrl+Shift+A in the title)`}
+          aria-label={entry.action ? 'Remove whole-' + entry.kind + ' action point' : 'Make this ' + entry.kind + ' an action point'}
+          aria-pressed={!!entry.action}
+          onClick={() => setEntryAction(entry.id, entry.action ? null : 'open')}
+        >
+          <FlagIcon size={16} filled={!!entry.action} />
+        </button>
+        {entry.action && (
+          <button
+            type="button"
+            className={`ap-check${entry.action === 'done' ? ' is-done' : ''}`}
+            title={entry.action === 'done' ? 'Mark as not done' : 'Mark as done'}
+            aria-label={entry.action === 'done' ? 'Mark as not done' : 'Mark as done'}
+            onClick={() => setEntryAction(entry.id, entry.action === 'done' ? 'open' : 'done')}
+          >
+            {entry.action === 'done' ? '✓' : ''}
           </button>
         )}
         {openCount > 0 && (

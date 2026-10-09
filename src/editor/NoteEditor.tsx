@@ -171,7 +171,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       <B on={state.ordered} label="1." title="Numbered list" run={() => chain().toggleOrderedList().run()} />
       <B on={state.task} label="☑" title="Checklist" run={() => chain().toggleTaskList().run()} />
       <span className="tb-sep" />
-      <B on={state.starred} label="★" title="Action point (Ctrl+Shift+A)" disabled={!state.inItem} run={() => chain().toggleActionPoint().run()} />
+      <B on={state.starred} label="★" title="Star as an action point (Ctrl+Shift+A)" run={() => chain().starLine().run()} />
       <B label="🖼" title="Insert image" run={() => fileInput.current?.click()} />
       <input
         ref={fileInput}

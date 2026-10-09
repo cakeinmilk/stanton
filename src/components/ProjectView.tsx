@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { ActionList } from './ActionList';
 import { contextMenu, MenuButton } from './Menu';
 import { PinnedStrip } from './PinnedStrip';
+import { ProjectDates } from './ImportantDates';
 import { newPage, pageMenu, projectMenu } from '../lib/commands';
 import { formatDate, PROJECT_COLORS } from '../lib/util';
 import { InlineTitle } from './InlineTitle';
@@ -83,6 +84,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
       </header>
 
       <PinnedStrip projectId={projectId} />
+
+      <ProjectDates project={project} />
 
       <section className="panel pinned">
         <div className="panel-head">

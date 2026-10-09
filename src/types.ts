@@ -2,12 +2,20 @@ import type { JSONContent } from '@tiptap/react';
 
 export type ID = string;
 
+export interface ImportantDate {
+  id: ID;
+  /** yyyy-mm-dd */
+  date: string;
+  label: string;
+}
+
 export interface Project {
   id: ID;
   name: string;
   color: string;
   createdAt: string;
   archivedAt?: string | null;
+  dates?: ImportantDate[];
 }
 
 export interface Page {
@@ -35,6 +43,9 @@ export interface Entry {
   pinnedAt?: string | null;
   /** Emoji shown on the pinned chip. Defaults by kind. */
   pinIcon?: string | null;
+  /** The whole meeting/note is an action point (as opposed to a starred bullet inside it). */
+  action?: ActionStatus | null;
+  actionDoneAt?: string | null;
 }
 
 export type ActionStatus = 'open' | 'done';
@@ -51,6 +62,8 @@ export interface ActionPoint {
   entryTitle: string;
   entryKind: EntryKind;
   entryDate: string;
+  /** True when the whole meeting/note is the action point. */
+  whole?: boolean;
 }
 
 export interface StantonData {
@@ -78,6 +91,8 @@ export interface Prefs {
   planIncludeActions: boolean;
   /** Free-form notes typed on the Weekly plan page (kept between sessions). */
   planNotes: string;
+  homeProjectsView: 'cards' | 'list';
+  minimizeToTray: boolean;
 }
 
 export type View =

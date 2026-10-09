@@ -4,6 +4,8 @@ import type { ColorScheme } from '../types';
 import { bridge, isElectron, type DockState } from '../lib/platform';
 import { suggestModel, useModels } from '../lib/models';
 import { ModelPicker } from './ModelPicker';
+import { MenuButton } from './Menu';
+import { exportMenu, runImport } from '../lib/commands';
 
 const SCHEMES: { id: ColorScheme; name: string; side: string; primary: string; accent: string }[] = [
   { id: 'teal', name: 'Teal & yellow', side: '#069494', primary: '#069494', accent: '#ffd43b' },
@@ -16,6 +18,7 @@ const AI_STUDIO_URL = 'https://aistudio.google.com/apikey';
 export function SettingsView({ dockState }: { dockState: DockState }) {
   const theme = useStore((s) => s.prefs.theme);
   const scheme = useStore((s) => s.prefs.scheme);
+  const minimizeToTray = useStore((s) => s.prefs.minimizeToTray);
   const setPrefs = useStore((s) => s.setPrefs);
 
   return (
@@ -80,6 +83,36 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
           </p>
         </section>
       )}
+
+      {isElectron && (
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Window</h2>
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={minimizeToTray} onChange={(e) => setPrefs({ minimizeToTray: e.target.checked })} /> Minimise to the system tray (click the
+            Stanton icon by the clock to bring it back)
+          </label>
+        </section>
+      )}
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Backup &amp; export</h2>
+        </div>
+        <p className="setting-text">
+          Save everything to a file for safekeeping or to move to another PC, or export a readable copy for other apps. To export a single project, use its ⋯ menu.
+        </p>
+        <div className="setting-row">
+          <MenuButton items={exportMenu()} label="Export everything" className="btn-like">
+            ⇪ Export everything…
+          </MenuButton>
+          <button type="button" className="btn" onClick={() => void runImport()}>
+            Import from a backup…
+          </button>
+        </div>
+        <p className="setting-hint">Importing adds the projects in the file alongside your existing ones; nothing is overwritten.</p>
+      </section>
 
       <GoogleAiSettings />
     </div>

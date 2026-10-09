@@ -7,7 +7,7 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 ## Features
 
 - **Projects → Pages → Meetings & Notes.** Each page lists its meetings and notes by date, newest or oldest first. A meeting's title has its date in front of it.
-- **Action points.** Click the ☆ to the left of any bullet, or press `Ctrl+Shift+A`, to star it as an action point.
+- **Action points.** Click the ☆ to the left of any bullet, or press `Ctrl+Shift+A`, to star it as an action point. The shortcut also works on a plain line, which becomes a starred bullet, and on several selected bullets at once. A **whole meeting or note** can be an action point too: click the ⚑ flag in its header, or press `Ctrl+Shift+A` in its title.
   - Open action points are pinned to the top of their **project**.
   - The **Home** page collects open action points from every project, grouped by project or as one list.
   - Tick the circle to mark an action point done (`Ctrl+Shift+D` inside the editor). It drops off the pinned lists but stays in the original meeting, struck through. "Recently completed" on Home lets you undo.
@@ -16,7 +16,11 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 - **Dock to the screen edge.** Use the ⇤ / ⇥ buttons in the title bar. On Windows, Stanton registers as a shell *AppBar* (the same mechanism the taskbar uses), so maximised windows fit beside it. Drag its inner edge to resize it. In the narrow docked layout, the project and page drop-downs and the ☰ drawer let you move between projects and pages.
 - **Organise by drag and drop.** Drag projects up or down in the sidebar. Drag pages to reorder them, either in the sidebar or on the project page. To move a page to another project, drop it on that project; Stanton asks you to confirm first. The ⋯ and right-click menus also have Move up and Move down.
 - **Right-click menus.** Right-click a project or page header, a sidebar row or a meeting/note header to get the same options as its ⋯ menu. In text, right-click gives Cut/Copy/Paste and spelling suggestions.
-- **Pinned notes.** Pin any meeting or note to its project from its ⋯ or right-click menu. Pinned items appear as chips with a name and an icon at the top of the project and each of its pages; click one to jump to it. Right-click a chip to change its icon or unpin it.
+- **Pinned notes.** Pin any meeting or note from its ⋯ or right-click menu. It appears as a chip at the top of its own page and of the project page; click it to jump there. Right-click a chip to give it an emoji or unpin it.
+- **Important dates** for each project (deadlines, launches, key meetings) appear above its action points. Home shows a **Coming up** list for the next three weeks.
+- **Home** can list projects as cards or as a compact list.
+- **Backup & export.** Export everything (Settings) or a single project (its menu). There are three formats: a **Stanton backup** you can re-import, with images included; a **web page** to open in or paste into Word, OneNote or email; and **Markdown** for apps such as Obsidian or Notion. Importing a backup adds its projects alongside your existing ones.
+- **Minimise to the system tray** (on by default; you can turn it off in Settings). While Stanton is hidden, its docked strip of screen is released for other windows.
 - **Archive or delete** projects and pages from their ⋯ menus. Archived items are listed under **Archive**, where you can restore them.
 - **Search** across page titles and note text (`Ctrl+F`).
 - **Weekly plan with Google Gemini.** You type or paste your notes for the week. Stanton adds your open action points (optional), plus any meetings or notes you pick (none by default), and asks Gemini for a day-by-day plan laid out like your template. Each day gets a theme, a **Focus:** line and **Action:** bullets. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.

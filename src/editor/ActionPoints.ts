@@ -15,6 +15,8 @@ declare module '@tiptap/core' {
       toggleActionPoint: () => ReturnType;
       /** Mark the action point containing the cursor done / not done. */
       toggleActionDone: () => ReturnType;
+      /** Star the current bullet(s); on a plain line, make it a bullet first. */
+      starLine: () => ReturnType;
     };
   }
 }
@@ -133,10 +135,30 @@ export const ActionPoints = Extension.create({
       toggleActionPoint:
         () =>
         ({ state, tr, dispatch }) => {
-          const item = findItem(state);
-          if (!item) return false;
-          if (dispatch) tr.setNodeMarkup(item.pos, undefined, statusAttrs(item.node, item.node.attrs[ACTION_ATTR] ? null : 'open'));
+          // Every list item the selection touches (just the one under the cursor when collapsed).
+          const items: { node: PMNode; pos: number }[] = [];
+          const { from, to, empty } = state.selection;
+          if (!empty) {
+            state.doc.nodesBetween(from, to, (node, pos) => {
+              if (TYPES.includes(node.type.name)) items.push({ node, pos });
+            });
+          }
+          if (!items.length) {
+            const item = findItem(state);
+            if (item) items.push(item);
+          }
+          if (!items.length) return false;
+          // Star them all unless they are all starred already, in which case unstar.
+          const allOn = items.every((i) => i.node.attrs[ACTION_ATTR]);
+          if (dispatch) for (const i of items) tr.setNodeMarkup(i.pos, undefined, statusAttrs(i.node, allOn ? null : i.node.attrs[ACTION_ATTR] || 'open'));
           return true;
+        },
+      starLine:
+        () =>
+        ({ state, chain }) => {
+          // Ctrl+Shift+A on a plain line turns it into a starred bullet.
+          if (findItem(state)) return chain().toggleActionPoint().run();
+          return chain().toggleBulletList().toggleActionPoint().run();
         },
       toggleActionDone:
         () =>
@@ -151,7 +173,7 @@ export const ActionPoints = Extension.create({
 
   addKeyboardShortcuts() {
     return {
-      'Mod-Shift-a': () => this.editor.commands.toggleActionPoint(),
+      'Mod-Shift-a': () => this.editor.commands.starLine(),
       'Mod-Shift-d': () => this.editor.commands.toggleActionDone(),
     };
   },

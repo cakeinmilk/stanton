@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('stanton', {
   close: () => ipcRenderer.send('window:close'),
   openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
   setTheme: (theme: 'system' | 'light' | 'dark') => ipcRenderer.invoke('theme:set', theme),
+  setMinimizeToTray: (on: boolean) => ipcRenderer.invoke('tray:set', on),
+  saveFile: (name: string, content: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> => ipcRenderer.invoke('file:save', name, content, filters),
+  openFile: (filters: { name: string; extensions: string[] }[]): Promise<{ name: string; content: string } | null> => ipcRenderer.invoke('file:open', filters),
   ai: {
     hasKey: (): Promise<boolean> => ipcRenderer.invoke('ai:has-key'),
     setKey: (key: string | null): Promise<boolean> => ipcRenderer.invoke('ai:set-key', key),

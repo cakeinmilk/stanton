@@ -58,6 +58,10 @@ export function setActionStatusInContent(content: JSONContent, actionId: string,
   return { content: result, changed };
 }
 
+/** Action ids for whole-entry actions are prefixed so they never clash with bullet ids. */
+export const WHOLE_PREFIX = 'note:';
+export const wholeActionId = (entryId: string) => `${WHOLE_PREFIX}${entryId}`;
+
 export function collectActionPoints(entries: Entry[], pages: Page[], projects: Project[], opts: { includeArchived?: boolean } = {}): ActionPoint[] {
   const pageById = new Map(pages.map((p) => [p.id, p]));
   const projectById = new Map(projects.map((p) => [p.id, p]));
@@ -68,6 +72,21 @@ export function collectActionPoints(entries: Entry[], pages: Page[], projects: P
     const project = projectById.get(page.projectId);
     if (!project) continue;
     if (!opts.includeArchived && (page.archivedAt || project.archivedAt)) continue;
+    if (entry.action === 'open' || entry.action === 'done') {
+      result.push({
+        id: wholeActionId(entry.id),
+        entryId: entry.id,
+        pageId: page.id,
+        projectId: project.id,
+        text: entry.title.trim() || (entry.kind === 'meeting' ? 'Untitled meeting' : 'Untitled note'),
+        status: entry.action,
+        completedAt: entry.actionDoneAt ?? null,
+        entryTitle: entry.title,
+        entryKind: entry.kind,
+        entryDate: entry.date,
+        whole: true,
+      });
+    }
     for (const a of extractActions(entry.content)) {
       result.push({
         id: a.id,

@@ -4,13 +4,23 @@ import { create } from 'zustand';
 
 export interface MenuItem {
   label: string;
-  icon?: string;
+  icon?: ReactNode;
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
 }
 
-export type MenuEntry = MenuItem | 'separator';
+/** An item that expands in place to show more items (keeps long lists like "Move to" tucked away). */
+export interface SubMenu {
+  label: string;
+  icon?: ReactNode;
+  submenu: MenuEntry[];
+  disabled?: boolean;
+}
+
+export type MenuEntry = MenuItem | SubMenu | 'separator';
+
+const isSub = (e: MenuEntry): e is SubMenu => typeof e === 'object' && 'submenu' in e;
 
 type Anchor = { kind: 'rect'; rect: DOMRect } | { kind: 'point'; x: number; y: number };
 
@@ -18,6 +28,7 @@ type Anchor = { kind: 'rect'; rect: DOMRect } | { kind: 'point'; x: number; y: n
 function MenuPopover({ items, anchor, onClose, ignore }: { items: MenuEntry[]; anchor: Anchor; onClose: () => void; ignore?: HTMLElement | null }) {
   const menu = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: -9999, left: -9999 });
+  const [open, setOpen] = useState<Record<number, boolean>>({});
 
   useLayoutEffect(() => {
     if (!menu.current) return;
@@ -35,7 +46,62 @@ function MenuPopover({ items, anchor, onClose, ignore }: { items: MenuEntry[]; a
       top = anchor.y + m.height > window.innerHeight - 8 ? Math.max(8, anchor.y - m.height) : anchor.y;
     }
     setPos({ top, left: Math.max(8, left) });
-  }, [anchor]);
+  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When a sub-list expands, nudge the menu up if it would run off the bottom.
+  useLayoutEffect(() => {
+    if (!menu.current) return;
+    const m = menu.current.getBoundingClientRect();
+    if (m.bottom > window.innerHeight - 8) setPos((p) => ({ ...p, top: Math.max(8, window.innerHeight - 8 - m.height) }));
+  }, [open]);
+
+  const renderItems = (list: MenuEntry[], depth: number, prefix: string): ReactNode =>
+    list.map((item, i) => {
+      const key = `${prefix}${i}`;
+      if (item === 'separator') return <div key={key} className="menu-sep" />;
+      if (isSub(item)) {
+        const idx = depth * 1000 + i;
+        const expanded = !!open[idx];
+        return (
+          <div key={key} className="menu-group">
+            <button
+              type="button"
+              role="menuitem"
+              aria-haspopup="true"
+              aria-expanded={expanded}
+              className={`menu-item has-sub${expanded ? ' is-open' : ''}`}
+              disabled={item.disabled || !item.submenu.length}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((o) => ({ ...o, [idx]: !o[idx] }));
+              }}
+            >
+              <span className="menu-icon">{item.icon ?? ''}</span>
+              {item.label}
+              <span className="menu-caret">{expanded ? '▾' : '▸'}</span>
+            </button>
+            {expanded && <div className="menu-sublist">{renderItems(item.submenu, depth + 1, `${key}-`)}</div>}
+          </div>
+        );
+      }
+      return (
+        <button
+          key={key}
+          type="button"
+          role="menuitem"
+          className={`menu-item${item.danger ? ' danger' : ''}`}
+          disabled={item.disabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+            item.onSelect();
+          }}
+        >
+          <span className="menu-icon">{item.icon ?? ''}</span>
+          {item.label}
+        </button>
+      );
+    });
 
   useEffect(() => {
     const close = (e: Event) => {
@@ -71,27 +137,7 @@ function MenuPopover({ items, anchor, onClose, ignore }: { items: MenuEntry[]; a
         buttons[(i + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();
       }}
     >
-      {items.map((item, i) =>
-        item === 'separator' ? (
-          <div key={i} className="menu-sep" />
-        ) : (
-          <button
-            key={i}
-            type="button"
-            role="menuitem"
-            className={`menu-item${item.danger ? ' danger' : ''}`}
-            disabled={item.disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-              item.onSelect();
-            }}
-          >
-            <span className="menu-icon">{item.icon ?? ''}</span>
-            {item.label}
-          </button>
-        ),
-      )}
+      {renderItems(items, 0, '')}
     </div>,
     document.body,
   );

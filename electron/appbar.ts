@@ -115,6 +115,18 @@ export class DockController {
     if (restore) this.setBounds(restore);
   }
 
+  /** Give the reserved screen space back while hidden (e.g. in the tray), keeping the edge. */
+  suspend() {
+    if (!this.edge) return;
+    this.unregister();
+    this.win.setAlwaysOnTop(false);
+  }
+
+  /** Re-reserve the space after suspend(). */
+  resume() {
+    if (this.edge) this.dock(this.edge);
+  }
+
   dispose() {
     this.unregister();
   }

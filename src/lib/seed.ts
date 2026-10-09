@@ -47,6 +47,8 @@ export const DEFAULT_PREFS: Prefs = {
   planIncludeDone: false,
   planIncludeActions: true,
   planNotes: '',
+  homeProjectsView: 'cards',
+  minimizeToTray: true,
 };
 import { nowIso, todayIso, uid } from './util';
 

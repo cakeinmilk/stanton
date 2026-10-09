@@ -578,7 +578,7 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 
 /* Pinned notes */
 .pinned-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -6px 0 14px; }
-.pinned-label { font-size: 14px; opacity: 0.8; }
+.pinned-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 .pin-chip {
   display: inline-flex; align-items: center; gap: 6px; max-width: 260px; height: 30px; padding: 0 12px 0 8px;
   border-radius: 999px; border: 1px solid var(--primary-line); background: var(--primary-soft); color: var(--primary-strong); font-weight: 600; font-size: 13px;
@@ -614,3 +614,49 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .scheme-preview .sp-main { flex: 1; background: #fff; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 0 8px; }
 .scheme-preview .sp-bar { height: 6px; border-radius: 3px; }
 .scheme-name { font-weight: 600; font-size: 13px; }
+.menu-caret { margin-left: auto; padding-left: 12px; color: var(--muted); font-size: 11px; }
+.menu-item.has-sub.is-open { background: var(--primary-soft); }
+.menu-sublist { border-left: 2px solid var(--primary-line); margin: 2px 0 2px 16px; }
+.svg-icon { display: inline-block; vertical-align: -3px; flex: none; }
+/* Whole meeting/note as an action point: flag icon (bullets use the star) */
+.whole-action { border: 0; background: none; padding: 2px 3px; border-radius: 6px; color: var(--muted); opacity: 0.55; display: inline-flex; }
+.entry-head:hover .whole-action, .whole-action:focus-visible { opacity: 1; }
+.whole-action:hover { color: var(--star); background: var(--surface-2); }
+.whole-action.is-open { color: var(--star); opacity: 1; }
+.whole-action.is-done { color: var(--muted); opacity: 1; }
+.entry-card.whole-open { box-shadow: var(--shadow), inset 0 3px 0 var(--star-line); }
+.entry-card.whole-done .entry-title { text-decoration: line-through; color: var(--muted); }
+.entry-head .ap-check { width: 20px; height: 20px; }
+.whole-tag {
+  display: inline-flex; align-items: center; gap: 3px; margin-right: 6px; padding: 0 6px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: 1px;
+  background: var(--star-soft); color: #6b5300;
+}
+.whole-tag .svg-icon { color: var(--star); }
+.pin-flag { color: var(--primary); display: inline-flex; }
+.pinned-label { color: var(--primary); display: inline-flex; }
+
+/* Important dates */
+.dates-panel { border-top: 4px solid var(--primary); }
+.dates-panel h2 .svg-icon { color: var(--primary); }
+.date-list { list-style: none; margin: 0; padding: 0; }
+.date-row { display: flex; align-items: center; gap: 12px; padding: 6px 4px; border-radius: 8px; }
+.date-row:hover { background: var(--surface-2); }
+.date-row.editing { gap: 8px; }
+.date-when { display: flex; flex-direction: column; min-width: 86px; }
+.date-day { font-weight: 700; font-variant-numeric: tabular-nums; }
+.date-rel { font-size: 11px; color: var(--muted); }
+.date-row.soon .date-rel { color: var(--danger); font-weight: 700; }
+.date-row.near .date-rel { color: var(--primary-strong); font-weight: 600; }
+.date-row.past { opacity: 0.6; }
+.date-label { flex: 1; min-width: 0; text-align: left; border: 0; background: none; padding: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 500; }
+.date-add { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.panel-toggle.small { font-size: 12px; color: var(--muted); margin-top: 6px; }
+/* Home projects as a list */
+.project-list { list-style: none; margin: 0; padding: 0; }
+.project-list .page-row-main .dot { margin-right: 2px; }
+.toasts { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 6px; max-width: calc(100% - 32px); }
+.toast { background: var(--titlebar-bg); color: #fff; padding: 9px 14px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); font-size: 13px; overflow-wrap: anywhere; }
+.toast.error { background: var(--danger); }
+.icon-btn.btn-like { width: auto; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; }
+.icon-btn.btn-like:hover { border-color: var(--primary-line); background: var(--surface); }

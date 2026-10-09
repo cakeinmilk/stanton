@@ -106,3 +106,28 @@ export function DialogHost() {
     </div>
   );
 }
+
+// ---- Toasts: short confirmations such as "Exported to …" ----
+
+const useToasts = create<{ items: { id: number; text: string; kind: 'ok' | 'error' }[] }>(() => ({ items: [] }));
+let toastId = 0;
+
+export function toast(text: string, kind: 'ok' | 'error' = 'ok') {
+  const id = ++toastId;
+  useToasts.setState((s) => ({ items: [...s.items, { id, text, kind }] }));
+  setTimeout(() => useToasts.setState((s) => ({ items: s.items.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : 4000);
+}
+
+export function ToastHost() {
+  const items = useToasts((s) => s.items);
+  if (!items.length) return null;
+  return (
+    <div className="toasts" role="status" aria-live="polite">
+      {items.map((t) => (
+        <div key={t.id} className={`toast ${t.kind}`}>
+          {t.text}
+        </div>
+      ))}
+    </div>
+  );
+}
