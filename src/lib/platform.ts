@@ -56,6 +56,8 @@ export interface TelegramStatus {
   paired: boolean;
   chatName: string | null;
   pairingCode: string | null;
+  /** Not connected this session because Stanton was stopped while connected last time. */
+  suspended?: boolean;
 }
 
 export interface TelegramMessage {
@@ -71,6 +73,7 @@ export interface TelegramBridge {
   startPairing(): Promise<TelegramStatus>;
   unpair(): Promise<TelegramStatus>;
   disconnect(): Promise<TelegramStatus>;
+  resume(): Promise<TelegramStatus>;
   onStatus(cb: (s: TelegramStatus) => void): () => void;
   onCommand(cb: (msg: TelegramMessage) => Promise<string>): () => void;
 }
@@ -201,6 +204,9 @@ const browserBridge: StantonBridge = {
       return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
     },
     async disconnect() {
+      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
+    },
+    async resume() {
       return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
     },
     onStatus() {

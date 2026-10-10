@@ -41,6 +41,21 @@ export function TelegramSettings() {
         Message Stanton from your phone: anything you send lands in your <b>Scratchpad</b>, and you can check or tick off action points. Stanton needs to be running (it's fine in
         the tray). Messages sent while the PC is off arrive the next time Stanton starts, as long as that's within 24 hours.
       </p>
+      <p className="setting-hint">
+        <b>On a work PC, check with IT first.</b> Security software (e.g. CrowdStrike) may block programs that connect to Telegram, and company policy may not allow it.
+      </p>
+
+      {st?.suspended && (
+        <div className="callout warn">
+          <p>
+            <b>Telegram is paused.</b> Stanton was stopped while it was connected to Telegram last time. That's usually a security tool such as CrowdStrike blocking it. On a work PC,
+            please check with your IT team before using this feature, or disconnect it below.
+          </p>
+          <button type="button" className="btn btn-small btn-danger-ghost" onClick={() => void run(() => bridge.telegram.disconnect())}>
+            Disconnect Telegram
+          </button>
+        </div>
+      )}
 
       {!st?.configured ? (
         <>

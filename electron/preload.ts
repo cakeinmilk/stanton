@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('stanton', {
     startPairing: () => ipcRenderer.invoke('telegram:start-pairing'),
     unpair: () => ipcRenderer.invoke('telegram:unpair'),
     disconnect: () => ipcRenderer.invoke('telegram:disconnect'),
+    resume: () => ipcRenderer.invoke('telegram:resume'),
     onStatus: (cb: (s: unknown) => void) => {
       const l = (_: unknown, s: unknown) => cb(s);
       ipcRenderer.on('telegram:status', l);

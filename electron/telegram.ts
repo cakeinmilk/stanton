@@ -10,12 +10,15 @@
  * Scratchpad note) and returns the reply text.
  */
 import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
-import { promises as fs } from 'node:fs';
+import { promises as fs, rmSync } from 'node:fs';
 import path from 'node:path';
 import { randomInt, randomUUID } from 'node:crypto';
 import { log } from './log';
 
 const file = () => path.join(app.getPath('userData'), 'telegram.json');
+/** Present while connected; removed on a clean exit. If it's still there at start-up, the last run was killed. */
+const runningMarker = () => path.join(app.getPath('userData'), 'telegram.running');
+let suspended = false;
 
 interface Stored {
   token?: string; // encrypted (base64) when `encrypted`
@@ -137,7 +140,9 @@ async function onUpdate(u: any) {
 async function pollLoop() {
   if (polling || !token) return;
   polling = true;
+  suspended = false;
   stopRequested = false;
+  await fs.writeFile(runningMarker(), new Date().toISOString()).catch(() => undefined);
   let backoff = 2000;
   log('Telegram polling started');
   while (!stopRequested && token) {
@@ -164,6 +169,7 @@ async function pollLoop() {
     }
   }
   polling = false;
+  await fs.rm(runningMarker(), { force: true }).catch(() => undefined);
   log('Telegram polling stopped');
 }
 
@@ -179,6 +185,7 @@ function status() {
     paired: !!stored.chatId,
     chatName: stored.chatName ?? null,
     pairingCode,
+    suspended,
   };
 }
 
@@ -223,18 +230,44 @@ export async function initTelegram(win: () => BrowserWindow | null, saveImage: (
     stop();
     token = null;
     pairingCode = null;
+    suspended = false;
     stored = {};
     await fs.rm(file(), { force: true });
+    await fs.rm(runningMarker(), { force: true });
     return status();
+  });
+  ipcMain.handle('telegram:resume', () => {
+    void pollLoop();
+    return { ...status(), suspended: false };
   });
   ipcMain.handle('telegram:reply', (_e, id: string, reply: string) => {
     pending.get(id)?.(reply);
     pending.delete(id);
   });
 
-  if (token) void pollLoop();
+  // If the previous run ended while connected (e.g. a security tool stopped Stanton),
+  // don't reconnect automatically – that would just get Stanton stopped again on every start.
+  let crashed = false;
+  try {
+    await fs.access(runningMarker());
+    crashed = true;
+  } catch {
+    /* clean exit last time */
+  }
+  if (token && crashed) {
+    suspended = true;
+    log('Telegram not started: Stanton did not exit cleanly last time while connected to Telegram');
+  } else if (token) {
+    void pollLoop();
+  }
 }
 
+/** Clean shutdown: stop polling and clear the "running" marker synchronously before quitting. */
 export function stopTelegram() {
   stop();
+  try {
+    rmSync(runningMarker(), { force: true });
+  } catch {
+    /* ignore */
+  }
 }
