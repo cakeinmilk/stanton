@@ -5,6 +5,7 @@ import { ActionList } from './ActionList';
 import { newProject, projectMenu } from '../lib/commands';
 import { contextMenu, MenuButton } from './Menu';
 import { UpcomingDates } from './ImportantDates';
+import { SCRATCH_PAGE_ID, SCRATCH_PROJECT } from '../lib/scratch';
 import { formatDate, todayIso } from '../lib/util';
 
 export function HomeView() {
@@ -49,12 +50,16 @@ export function HomeView() {
         </div>
         {!open.length && <p className="empty-hint">Nothing outstanding. Star a bullet in any meeting to add an action point.</p>}
         {grouped
-          ? projects.map((p) => {
+          ? [...projects, SCRATCH_PROJECT].map((p) => {
               const list = open.filter((a) => a.projectId === p.id);
               if (!list.length) return null;
               return (
                 <div key={p.id} className="action-group">
-                  <button type="button" className="group-title" onClick={() => navigate({ name: 'project', projectId: p.id })}>
+                  <button
+                    type="button"
+                    className="group-title"
+                    onClick={() => navigate(p.id === SCRATCH_PROJECT.id ? { name: 'page', pageId: SCRATCH_PAGE_ID } : { name: 'project', projectId: p.id })}
+                  >
                     <span className="dot" style={{ background: p.color }} /> {p.name}
                     <span className="count">{list.length}</span>
                   </button>

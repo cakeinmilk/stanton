@@ -4,6 +4,7 @@ import type { ColorScheme } from '../types';
 import { bridge, isElectron, type DockState } from '../lib/platform';
 import { suggestModel, useModels } from '../lib/models';
 import { ModelPicker } from './ModelPicker';
+import { TelegramSettings } from './TelegramSettings';
 import { MenuButton } from './Menu';
 import { exportMenu, runImport } from '../lib/commands';
 
@@ -113,6 +114,8 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
         </div>
         <p className="setting-hint">Importing adds the projects in the file alongside your existing ones; nothing is overwritten.</p>
       </section>
+
+      <TelegramSettings />
 
       <GoogleAiSettings />
     </div>

@@ -1,4 +1,5 @@
 import type { Prefs, StantonData } from '../types';
+import { SCRATCH_PAGE_ID, scratchPage } from './scratch';
 
 /** The original (v0.2.0) default, so it can be upgraded to the new one. */
 const OLD_DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
@@ -53,7 +54,7 @@ export const DEFAULT_PREFS: Prefs = {
 import { nowIso, todayIso, uid } from './util';
 
 export function emptyData(): StantonData {
-  return { version: 1, projects: [], pages: [], entries: [], prefs: { ...DEFAULT_PREFS } };
+  return { version: 1, projects: [], pages: [scratchPage()], entries: [], prefs: { ...DEFAULT_PREFS } };
 }
 
 /** A small welcome project so the first launch isn't a blank screen. */
@@ -69,7 +70,7 @@ export function seedData(): StantonData {
   return {
     ...emptyData(),
     projects: [{ id: projectId, name: 'Getting started', color: '#069494', createdAt: now }],
-    pages: [{ id: pageId, projectId, title: 'Welcome to Stanton', createdAt: now }],
+    pages: [{ id: pageId, projectId, title: 'Welcome to Stanton', createdAt: now }, scratchPage()],
     entries: [
       {
         id: uid(),
@@ -130,10 +131,14 @@ export function normalize(raw: unknown): StantonData {
   return {
     version: 1,
     projects: Array.isArray(r.projects) ? r.projects : [],
-    pages: Array.isArray(r.pages) ? r.pages : [],
+    pages: withScratch(Array.isArray(r.pages) ? r.pages : []),
     entries: Array.isArray(r.entries) ? r.entries : [],
     prefs: upgradePrefs({ ...base.prefs, ...(r.prefs ?? {}) }),
   };
+}
+
+function withScratch(pages: StantonData['pages']) {
+  return pages.some((p) => p.id === SCRATCH_PAGE_ID) ? pages : [...pages, scratchPage()];
 }
 
 function upgradePrefs(prefs: Prefs): Prefs {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bridge, isElectron, type DockState } from '../lib/platform';
 import { useStore } from '../store';
+import { SCRATCH_PAGE_ID, SCRATCH_PROJECT_ID } from '../lib/scratch';
 
 export function useDock() {
   const [state, setState] = useState<DockState>({ edge: null, mode: null });
@@ -110,15 +111,19 @@ export function QuickSwitcher() {
     <div className="quick-switcher">
       <select
         aria-label="Project"
-        value={view.name === 'home' ? '__home' : view.name === 'archive' ? '__archive' : projectId ?? ''}
+        value={view.name === 'home' ? '__home' : view.name === 'archive' ? '__archive' : view.name === 'page' && view.pageId === SCRATCH_PAGE_ID ? '__scratch' : view.name === 'plan' ? '__plan' : projectId ?? ''}
         onChange={(e) => {
           const v = e.target.value;
           if (v === '__home') navigate({ name: 'home' });
+          else if (v === '__scratch') navigate({ name: 'page', pageId: SCRATCH_PAGE_ID });
+          else if (v === '__plan') navigate({ name: 'plan' });
           else if (v === '__archive') navigate({ name: 'archive' });
           else navigate({ name: 'project', projectId: v });
         }}
       >
         <option value="__home">⌂ Home</option>
+        <option value="__scratch">🗒 Scratchpad</option>
+        <option value="__plan">✦ Weekly plan</option>
         {projects.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -126,7 +131,7 @@ export function QuickSwitcher() {
         ))}
         <option value="__archive">🗄 Archive</option>
       </select>
-      {projectId && (
+      {projectId && projectId !== SCRATCH_PROJECT_ID && (
         <select
           aria-label="Page"
           value={pageId}

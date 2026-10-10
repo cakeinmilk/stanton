@@ -1,6 +1,7 @@
 import type { Entry, Page, Project, StantonData } from '../types';
 import { collectActionPoints, nodeText } from './actions';
 import { formatDate, todayIso } from './util';
+import { isLivePage, SCRATCH_PROJECT } from './scratch';
 
 /** Monday of the week to plan: this week's Monday, or next Monday from Friday afternoon / weekends. */
 export function defaultWeekStart(now = new Date()): string {
@@ -61,8 +62,8 @@ export const PLAN_SYSTEM = [
 /** Meetings and notes the user can pick from, newest first. */
 export function recentEntries(data: Pick<StantonData, 'projects' | 'pages' | 'entries'>, days: number, now = new Date()) {
   const since = addDays(todayIso(now), -Math.max(0, days));
-  const liveProjects = new Map(data.projects.filter((p) => !p.archivedAt).map((p) => [p.id, p]));
-  const livePages = new Map(data.pages.filter((p) => !p.archivedAt && liveProjects.has(p.projectId)).map((p) => [p.id, p]));
+  const liveProjects = new Map([...data.projects.filter((p) => !p.archivedAt), SCRATCH_PROJECT].map((p) => [p.id, p]));
+  const livePages = new Map(data.pages.filter((p) => isLivePage(p, new Set(liveProjects.keys()))).map((p) => [p.id, p]));
   return data.entries
     .filter((e) => livePages.has(e.pageId) && (e.date >= since || e.updatedAt.slice(0, 10) >= since))
     .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
@@ -75,9 +76,9 @@ export function recentEntries(data: Pick<StantonData, 'projects' | 'pages' | 'en
 export function buildPlanPrompt(data: Pick<StantonData, 'projects' | 'pages' | 'entries'>, template: string, input: PlanInput, now = new Date()): PlanPrompt {
   const projects = data.projects.filter((p: Project) => !p.archivedAt);
   const projectIds = new Set(projects.map((p) => p.id));
-  const pages = data.pages.filter((p) => !p.archivedAt && projectIds.has(p.projectId));
+  const pages = data.pages.filter((p) => isLivePage(p, projectIds));
   const pageById = new Map<string, Page>(pages.map((p) => [p.id, p]));
-  const projectById = new Map(projects.map((p) => [p.id, p]));
+  const projectById = new Map([...projects, SCRATCH_PROJECT].map((p) => [p.id, p]));
   const since = addDays(todayIso(now), -Math.max(0, input.days ?? 7));
 
   const actions = input.includeActions

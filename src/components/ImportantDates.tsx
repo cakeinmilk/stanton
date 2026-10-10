@@ -4,6 +4,8 @@ import type { ImportantDate, Project } from '../types';
 import { formatDate, todayIso } from '../lib/util';
 import { CalendarIcon } from './Icons';
 import { contextMenu } from './Menu';
+import { meetingFromDateMenu } from '../lib/commands';
+import { useToday } from '../hooks';
 
 /** Whole days from today until `iso` (negative = past). */
 export function daysUntil(iso: string, today = todayIso()): number {
@@ -30,7 +32,8 @@ function DateRow({ project, d, showProject }: { project: Project; d: ImportantDa
   const navigate = useStore((s) => s.navigate);
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(d.label);
-  const n = daysUntil(d.date);
+  const today = useToday();
+  const n = daysUntil(d.date, today);
 
   if (editing) {
     return (
@@ -53,9 +56,12 @@ function DateRow({ project, d, showProject }: { project: Project; d: ImportantDa
   }
   return (
     <li
-      className={`date-row ${urgency(n)}`}
+      className={`date-row ${urgency(n)}${n === 0 ? ' today' : ''}`}
       onContextMenu={contextMenu(() => [
-        { label: 'Edit', icon: '✎', onSelect: () => setEditing(true) },
+        meetingFromDateMenu(project.id, d.date, d.label),
+        'separator',
+        ...(showProject ? [{ label: 'Open project', icon: '↗', onSelect: () => navigate({ name: 'project', projectId: project.id }) }] : []),
+        { label: 'Edit', icon: '✎', onSelect: () => (showProject ? navigate({ name: 'project', projectId: project.id }) : setEditing(true)) },
         { label: 'Remove', icon: '🗑', danger: true, onSelect: () => removeDate(project.id, d.id) },
       ])}
     >
@@ -88,7 +94,7 @@ export function ProjectDates({ project }: { project: Project }) {
   const [adding, setAdding] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const all = useMemo(() => [...(project.dates ?? [])].sort((a, b) => a.date.localeCompare(b.date)), [project.dates]);
-  const today = todayIso();
+  const today = useToday();
   const upcoming = all.filter((d) => d.date >= today);
   const past = all.filter((d) => d.date < today).reverse();
 
@@ -164,7 +170,7 @@ export function ProjectDates({ project }: { project: Project }) {
 /** Next few weeks of dates across all projects, for Home. */
 export function UpcomingDates({ days = 21 }: { days?: number }) {
   const projects = useStore((s) => s.projects);
-  const today = todayIso();
+  const today = useToday();
   const items = projects
     .filter((p) => !p.archivedAt)
     .flatMap((p) => (p.dates ?? []).map((d) => ({ p, d })))

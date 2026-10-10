@@ -1,7 +1,7 @@
 {
   "name": "stanton",
   "productName": "Stanton",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Stanton - a lightweight, dockable meeting notes app for Windows",
   "main": "dist-electron/main.js",
   "author": "Stanton",

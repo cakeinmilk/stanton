@@ -4,6 +4,7 @@ import type { ActionStatus, Entry, EntryKind, ID, ImportantDate, Project, Stanto
 import { emptyData, normalize, seedData } from './lib/seed';
 import { nowIso, PROJECT_COLORS, todayIso, uid } from './lib/util';
 import { setActionStatusInContent, wholeActionId } from './lib/actions';
+import { SCRATCH_PAGE_ID } from './lib/scratch';
 import { bridge } from './lib/platform';
 
 interface UiState {
@@ -41,6 +42,8 @@ interface Actions {
   updateEntry(id: ID, patch: Partial<Pick<Entry, 'title' | 'date' | 'kind' | 'collapsed'>>): void;
   setEntryContent(id: ID, content: JSONContent): void;
   deleteEntry(id: ID): void;
+  /** Move a meeting/note to another page (e.g. out of the Scratchpad). */
+  moveEntry(id: ID, pageId: ID): void;
   /** Pin/unpin an entry to its project, or change its pin icon. Doesn't count as an edit. */
   setEntryPin(id: ID, patch: { pinned?: boolean; icon?: string | null }): void;
   /** Make a whole meeting/note an action point (or not). */
@@ -70,11 +73,11 @@ export const useStore = create<Store>()((set, get) => {
     const v = s.view;
     const liveProject = (id: ID) => s.projects.some((p) => p.id === id && !p.archivedAt);
     if (v.name === 'project' && !liveProject(v.projectId)) set({ view: { name: 'home' } });
-    if (v.name === 'page') {
+    if (v.name === 'page' && v.pageId !== SCRATCH_PAGE_ID) {
       const page = s.pages.find((p) => p.id === v.pageId);
       if (!page || page.archivedAt || !liveProject(page.projectId)) set({ view: { name: 'home' } });
     }
-    set((st) => ({ history: st.history.filter((h) => (h.name === 'project' ? liveProject(h.projectId) : h.name === 'page' ? st.pages.some((p) => p.id === h.pageId && !p.archivedAt) : true)) }));
+    set((st) => ({ history: st.history.filter((h) => (h.name === 'project' ? liveProject(h.projectId) : h.name === 'page' ? h.pageId === SCRATCH_PAGE_ID || st.pages.some((p) => p.id === h.pageId && !p.archivedAt) : true)) }));
   };
 
   return {
@@ -213,6 +216,9 @@ export const useStore = create<Store>()((set, get) => {
     },
     deleteEntry(id) {
       set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+    },
+    moveEntry(id, pageId) {
+      set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, pageId } : e)) }));
     },
     setEntryAction(id, status) {
       set((s) => ({

@@ -46,6 +46,8 @@ export interface Entry {
   /** The whole meeting/note is an action point (as opposed to a starred bullet inside it). */
   action?: ActionStatus | null;
   actionDoneAt?: string | null;
+  /** Calendar event this meeting was created from (to avoid importing it twice). */
+  sourceId?: string | null;
 }
 
 export type ActionStatus = 'open' | 'done';

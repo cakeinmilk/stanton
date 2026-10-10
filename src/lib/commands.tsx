@@ -3,6 +3,7 @@ import { exportHtml, exportMarkdown, exportStanton, importStanton } from './back
 import { errorMessage } from './platform';
 import { PIN_ICONS, pinIcon } from './pins';
 import { PinIcon } from '../components/Icons';
+import { SCRATCH_PAGE_ID } from './scratch';
 import type { MenuEntry } from '../components/Menu';
 import { useStore } from '../store';
 import type { ID } from '../types';
@@ -175,4 +176,62 @@ export async function runImport() {
   } catch (err) {
     toast(`Import failed: ${errorMessage(err)}`, 'error');
   }
+}
+
+/** "Move to…" for a meeting/note: Scratchpad, or any page of any project (grouped by project). */
+export function entryMoveMenu(entryId: ID): MenuEntry[] {
+  const e = st().entries.find((x) => x.id === entryId);
+  if (!e) return [];
+  const projects = st().projects.filter((p) => !p.archivedAt);
+  const move = (pageId: ID) => {
+    st().moveEntry(entryId, pageId);
+    const where = pageId === SCRATCH_PAGE_ID ? 'Scratchpad' : st().pages.find((p) => p.id === pageId)?.title ?? 'page';
+    toast(`Moved to ${where}`);
+  };
+  const items: MenuEntry[] = [];
+  if (e.pageId !== SCRATCH_PAGE_ID) items.push({ label: 'Scratchpad', icon: '🗒', onSelect: () => move(SCRATCH_PAGE_ID) });
+  for (const p of projects) {
+    const pages = st().pages.filter((pg) => pg.projectId === p.id && !pg.archivedAt && pg.id !== e.pageId);
+    const dot = <span className="dot" style={{ background: p.color }} />;
+    items.push({
+      label: p.name,
+      icon: dot,
+      submenu: [
+        ...pages.map((pg): MenuEntry => ({ label: pg.title, icon: '📄', onSelect: () => move(pg.id) })),
+        {
+          label: 'New page…',
+          icon: '＋',
+          onSelect: async () => {
+            const title = await promptDialog(`New page in ${p.name}`, '', { label: 'Page title', okLabel: 'Create & move' });
+            if (title) move(st().addPage(p.id, title));
+          },
+        },
+      ],
+    });
+  }
+  return items;
+}
+
+/** Start a meeting for an important date, on a page of its project (or a new page). */
+export function meetingFromDateMenu(projectId: ID, date: string, label: string): MenuEntry {
+  const create = (pageId: ID) => {
+    const id = st().addEntry(pageId, 'meeting');
+    st().updateEntry(id, { title: label, date });
+    st().navigate({ name: 'page', pageId, focusEntryId: id });
+  };
+  const pages = st().pages.filter((p) => p.projectId === projectId && !p.archivedAt);
+  const newPageItem: MenuEntry = {
+    label: 'New page…',
+    icon: '＋',
+    onSelect: async () => {
+      const title = await promptDialog('New page for this meeting', '', { label: 'Page title', okLabel: 'Create meeting' });
+      if (title) create(st().addPage(projectId, title));
+    },
+  };
+  if (pages.length === 1) return { label: `Create meeting in ${pages[0].title}`, icon: '👥', onSelect: () => create(pages[0].id) };
+  return {
+    label: 'Create meeting',
+    icon: '👥',
+    submenu: [...pages.map((pg): MenuEntry => ({ label: `in ${pg.title}`, icon: '📄', onSelect: () => create(pg.id) })), newPageItem],
+  };
 }

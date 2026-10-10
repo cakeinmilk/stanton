@@ -17,6 +17,7 @@ function half(e: DragEvent): 'before' | 'after' {
 }
 import { nodeText } from '../lib/actions';
 import { formatDate } from '../lib/util';
+import { isLivePage, SCRATCH_PAGE_ID } from '../lib/scratch';
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const view = useStore((s) => s.view);
@@ -27,6 +28,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const actions = useActionPoints();
   const openCount = actions.filter((a) => a.status === 'open').length;
   const [query, setQuery] = useState('');
+  const scratchCount = useStore((s) => s.entries.filter((e) => e.pageId === SCRATCH_PAGE_ID).length);
 
   const currentProjectId =
     view.name === 'project' ? view.projectId : view.name === 'page' ? pages.find((p) => p.id === view.pageId)?.projectId : undefined;
@@ -106,6 +108,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <button type="button" className={`nav-item${view.name === 'home' ? ' is-active' : ''}`} onClick={() => go({ name: 'home' })}>
             <span className="nav-icon">⌂</span> Home
             {openCount > 0 && <span className="badge">★ {openCount}</span>}
+          </button>
+          <button
+            type="button"
+            className={`nav-item${view.name === 'page' && view.pageId === SCRATCH_PAGE_ID ? ' is-active' : ''}`}
+            onClick={() => go({ name: 'page', pageId: SCRATCH_PAGE_ID })}
+            title="Quick notes to file later"
+          >
+            <span className="nav-icon">🗒</span> Scratchpad
+            {scratchCount > 0 && <span className="count">{scratchCount}</span>}
           </button>
           <button type="button" className={`nav-item${view.name === 'plan' ? ' is-active' : ''}`} onClick={() => go({ name: 'plan' })}>
             <span className="nav-icon">✦</span> Weekly plan
@@ -218,9 +229,8 @@ function SearchResults({ query, onPick }: { query: string; onPick: () => void })
 
   const results = useMemo(() => {
     const q = query.toLowerCase();
-    const livePage = new Map(
-      pages.filter((p) => !p.archivedAt && projects.some((pr) => pr.id === p.projectId && !pr.archivedAt)).map((p) => [p.id, p]),
-    );
+    const liveIds = new Set(projects.filter((pr) => !pr.archivedAt).map((pr) => pr.id));
+    const livePage = new Map(pages.filter((p) => isLivePage(p, liveIds)).map((p) => [p.id, p]));
     const pageHits = [...livePage.values()].filter((p) => p.title.toLowerCase().includes(q));
     const entryHits = entries
       .filter((e) => livePage.has(e.pageId))

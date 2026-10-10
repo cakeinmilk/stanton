@@ -31,7 +31,48 @@ export interface StantonBridge {
   /** Ask where to save, then write the file. Resolves to the saved path, or null if cancelled. */
   saveFile(name: string, content: string, filters: FileFilter[]): Promise<string | null>;
   openFile(filters: FileFilter[]): Promise<{ name: string; content: string } | null>;
+  outlookEvents(offsetDays: number, days: number): Promise<CalendarEvent[]>;
+  telegram: TelegramBridge;
   ai: AiBridge;
+}
+
+export interface CalendarEvent {
+  id: string;
+  subject: string;
+  /** Local time, yyyy-mm-ddTHH:mm:ss */
+  start: string;
+  end: string;
+  allDay: boolean;
+  location: string;
+  organizer: string;
+  attendees: string[];
+  agenda: string;
+  teams: boolean;
+}
+
+export interface TelegramStatus {
+  configured: boolean;
+  botName: string | null;
+  paired: boolean;
+  chatName: string | null;
+  pairingCode: string | null;
+}
+
+export interface TelegramMessage {
+  id: string;
+  text: string;
+  image?: string;
+  from: string;
+}
+
+export interface TelegramBridge {
+  status(): Promise<TelegramStatus>;
+  setToken(token: string): Promise<TelegramStatus>;
+  startPairing(): Promise<TelegramStatus>;
+  unpair(): Promise<TelegramStatus>;
+  disconnect(): Promise<TelegramStatus>;
+  onStatus(cb: (s: TelegramStatus) => void): () => void;
+  onCommand(cb: (msg: TelegramMessage) => Promise<string>): () => void;
 }
 
 export interface FileFilter {
@@ -142,6 +183,32 @@ const browserBridge: StantonBridge = {
       };
       input.click();
     });
+  },
+  async outlookEvents() {
+    throw new Error('Outlook import works in the Stanton desktop app on Windows.');
+  },
+  telegram: {
+    async status() {
+      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
+    },
+    async setToken() {
+      throw new Error('Telegram works in the Stanton desktop app.');
+    },
+    async startPairing() {
+      throw new Error('Telegram works in the Stanton desktop app.');
+    },
+    async unpair() {
+      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
+    },
+    async disconnect() {
+      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
+    },
+    onStatus() {
+      return () => undefined;
+    },
+    onCommand() {
+      return () => undefined;
+    },
   },
   ai: browserAi,
 };

@@ -647,6 +647,8 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .date-day { font-weight: 700; font-variant-numeric: tabular-nums; }
 .date-rel { font-size: 11px; color: var(--muted); }
 .date-row.soon .date-rel { color: var(--danger); font-weight: 700; }
+.date-row.today { background: var(--star-soft); box-shadow: inset 3px 0 0 var(--star-line); }
+.date-row.today .date-rel { text-transform: uppercase; letter-spacing: 0.04em; }
 .date-row.near .date-rel { color: var(--primary-strong); font-weight: 600; }
 .date-row.past { opacity: 0.6; }
 .date-label { flex: 1; min-width: 0; text-align: left; border: 0; background: none; padding: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 500; }
@@ -660,3 +662,18 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .toast.error { background: var(--danger); }
 .icon-btn.btn-like { width: auto; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; }
 .icon-btn.btn-like:hover { border-color: var(--primary-line); background: var(--surface); }
+.pairing { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+.tg-help summary { cursor: pointer; font-weight: 600; margin: 6px 0; }
+.tg-help pre { white-space: pre-wrap; background: var(--surface-2); padding: 10px; border-radius: 8px; font-size: 12px; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+/* Calendar import */
+.modal.wide { width: min(620px, 100%); max-height: 86vh; display: flex; flex-direction: column; }
+.modal.wide h2 { display: flex; align-items: center; gap: 8px; }
+.cal-options { display: flex; gap: 16px; margin: 8px 0; }
+.cal-list { overflow-y: auto; min-height: 120px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 0; }
+.cal-row { display: flex; align-items: center; gap: 12px; padding: 7px 4px; border-radius: 8px; }
+.cal-row:hover { background: var(--surface-2); }
+.cal-when { display: flex; flex-direction: column; min-width: 70px; font-variant-numeric: tabular-nums; }
+.cal-when small, .cal-main small { color: var(--muted); font-size: 12px; }
+.cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cal-subject { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

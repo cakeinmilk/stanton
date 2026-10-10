@@ -5,6 +5,7 @@ import { bridge } from './platform';
 import { collectActionPoints, extractActions } from './actions';
 import { docToHtml } from './export';
 import { formatDate, nowIso, uid } from './util';
+import { SCRATCH_PAGE_ID, SCRATCH_PROJECT_ID } from './scratch';
 
 /** File format for Stanton backups / transfers. Images are embedded as data URLs. */
 export interface StantonExport {
@@ -61,6 +62,7 @@ function select(projectId?: string) {
   const s = useStore.getState();
   const projects = projectId ? s.projects.filter((p) => p.id === projectId) : s.projects;
   const ids = new Set(projects.map((p) => p.id));
+  if (!projectId) ids.add(SCRATCH_PROJECT_ID); // a full backup includes the Scratchpad
   const pages = s.pages.filter((p) => ids.has(p.projectId));
   const pageIds = new Set(pages.map((p) => p.id));
   const entries = s.entries.filter((e) => pageIds.has(e.pageId));
@@ -264,7 +266,8 @@ export function parseExport(text: string): StantonExport {
  */
 export function remapIds(data: Pick<StantonExport, 'projects' | 'pages' | 'entries'>, existingNames: Set<string>) {
   const projectMap = new Map<string, string>();
-  const pageMap = new Map<string, string>();
+  // Scratchpad notes go into this Stanton's own Scratchpad.
+  const pageMap = new Map<string, string>([[SCRATCH_PAGE_ID, SCRATCH_PAGE_ID]]);
   const projects = data.projects.map((p) => {
     const id = uid();
     projectMap.set(p.id, id);
@@ -272,7 +275,7 @@ export function remapIds(data: Pick<StantonExport, 'projects' | 'pages' | 'entri
     return { ...p, id, name, dates: (p.dates ?? []).map((d) => ({ ...d, id: uid() })) };
   });
   const pages = data.pages
-    .filter((p) => projectMap.has(p.projectId))
+    .filter((p) => projectMap.has(p.projectId) && p.id !== SCRATCH_PAGE_ID)
     .map((p) => {
       const id = uid();
       pageMap.set(p.id, id);

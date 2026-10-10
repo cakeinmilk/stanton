@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { DockController, DockEdge } from './appbar';
 import { registerAiIpc } from './ai';
+import { registerOutlookIpc } from './outlook';
+import { initTelegram, stopTelegram } from './telegram';
 import { log } from './log';
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
@@ -24,6 +26,8 @@ interface WindowSettings {
   dockWidth?: number;
   theme?: 'system' | 'light' | 'dark';
   minimizeToTray?: boolean;
+  /** Where the docked window last sat (DIP), used to open it in place. */
+  dockBounds?: Rectangle;
 }
 
 function readSettings(): WindowSettings {
@@ -56,11 +60,13 @@ let quitting = false;
 
 const iconPath = () => path.join(__dirname, '../build/icon.png');
 
-function showFromTray() {
+async function showFromTray() {
   if (!win) return;
+  // Re-dock while still hidden, then show it already in place (no flicker).
+  dock?.resume();
+  await dock?.whenSettled();
   win.show();
   if (win.isMinimized()) win.restore();
-  dock?.resume();
   win.focus();
   tray?.destroy();
   tray = null;
@@ -111,8 +117,10 @@ function createWindow() {
   const defaults: Rectangle = { x: 0, y: 0, width: 1100, height: 760 };
   floatingBounds = settings.bounds && boundsAreVisible(settings.bounds) ? settings.bounds : undefined;
 
+  // If Stanton was docked, open it where the dock was so nothing visibly jumps.
+  const startBounds = settings.dock && settings.dockBounds && boundsAreVisible(settings.dockBounds) ? settings.dockBounds : floatingBounds;
   win = new BrowserWindow({
-    ...(floatingBounds ?? { width: defaults.width, height: defaults.height }),
+    ...(startBounds ?? { width: defaults.width, height: defaults.height }),
     minWidth: 280,
     minHeight: 400,
     frame: false,
@@ -125,24 +133,29 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Keep handling Telegram messages promptly while hidden in the tray.
+      backgroundThrottling: false,
       spellcheck: true,
     },
   });
 
   dock = new DockController(win);
 
-  win.once('ready-to-show', () => {
-    win?.show();
+  win.once('ready-to-show', async () => {
     if (settings.dock) {
+      // Dock before showing, and only show once the window has settled.
       dock?.dock(settings.dock, settings.dockWidth);
+      await dock?.whenSettled();
       sendDockState();
     }
+    win?.show();
   });
 
   const remember = () => {
     if (!win || win.isMaximized() || win.isMinimized()) return;
     if (dock?.dockedEdge) {
       settings.dockWidth = dock.dockedWidth;
+      settings.dockBounds = dock.lastDockedBounds ?? win.getBounds();
     } else {
       floatingBounds = win.getBounds();
       settings.bounds = floatingBounds;
@@ -194,6 +207,14 @@ function createWindow() {
   else void win.loadFile(path.join(__dirname, '../dist/index.html'));
 }
 
+async function saveImage(bytes: Buffer, mime: string) {
+  const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/svg+xml': 'svg' } as Record<string, string>)[mime] ?? 'png';
+  await fs.mkdir(imagesDir(), { recursive: true });
+  const name = `${randomUUID()}.${ext}`;
+  await fs.writeFile(path.join(imagesDir(), name), bytes);
+  return `stanton://images/${name}`;
+}
+
 function registerIpc() {
   ipcMain.handle('data:load', async () => {
     try {
@@ -214,13 +235,7 @@ function registerIpc() {
     return true;
   });
 
-  ipcMain.handle('image:save', async (_e, bytes: Uint8Array, mime: string) => {
-    const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/svg+xml': 'svg' } as Record<string, string>)[mime] ?? 'png';
-    await fs.mkdir(imagesDir(), { recursive: true });
-    const name = `${randomUUID()}.${ext}`;
-    await fs.writeFile(path.join(imagesDir(), name), Buffer.from(bytes));
-    return `stanton://images/${name}`;
-  });
+  ipcMain.handle('image:save', (_e, bytes: Uint8Array, mime: string) => saveImage(Buffer.from(bytes), mime));
 
   ipcMain.handle('window:dock', async (_e, edge: DockEdge | null) => {
     if (!win || !dock) return null;
@@ -247,6 +262,7 @@ function registerIpc() {
     await writeSettings(settings);
   });
   registerAiIpc();
+  registerOutlookIpc();
   ipcMain.on('window:minimize', () => {
     if (settings.minimizeToTray ?? true) hideToTray();
     else win?.minimize();
@@ -304,10 +320,12 @@ if (!gotLock) {
     log(`Stanton ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
     registerIpc();
     createWindow();
+    void initTelegram(() => win, saveImage);
   });
 
   app.on('before-quit', () => {
     quitting = true;
+    stopTelegram();
     dock?.dispose();
     tray?.destroy();
   });

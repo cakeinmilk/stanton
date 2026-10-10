@@ -240,6 +240,32 @@ export class DockController {
   }
 
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
+  private settleWaiters: (() => void)[] = [];
+
+  /** Resolves once the window has reached its docked position (or after `maxMs`). */
+  whenSettled(maxMs = 1200): Promise<void> {
+    if (!this.settingBounds) return Promise.resolve();
+    return new Promise((resolve) => {
+      const t = setTimeout(resolve, maxMs);
+      this.settleWaiters.push(() => {
+        clearTimeout(t);
+        resolve();
+      });
+    });
+  }
+
+  private settled() {
+    this.settingBounds = false;
+    const w = this.settleWaiters;
+    this.settleWaiters = [];
+    w.forEach((f) => f());
+  }
+
+  /** Last docked bounds (DIP), so the window can be created there and not jump on start-up. */
+  get lastDockedBounds(): Rectangle | null {
+    return this.edge ? this.lastBounds : null;
+  }
+  private lastBounds: Rectangle | null = null;
 
   /**
    * Move the window and make sure it actually got there. On some setups (seen on an
@@ -247,6 +273,12 @@ export class DockController {
    * short of the edge, so we check and re-apply a few times.
    */
   private setBounds(b: Rectangle, attempt = 0) {
+    if (attempt === 0 && this.edge) this.lastBounds = b;
+    // Already there? Skip the move entirely – avoids visible jitter when the shell re-announces positions.
+    if (attempt === 0 && !this.settingBounds) {
+      const cur = this.win.getBounds();
+      if (Math.abs(cur.x - b.x) <= 2 && Math.abs(cur.y - b.y) <= 2 && Math.abs(cur.width - b.width) <= 2 && Math.abs(cur.height - b.height) <= 2) return;
+    }
     this.settingBounds = true;
     clearTimeout(this.settleTimer);
     try {
@@ -261,7 +293,7 @@ export class DockController {
       log('setBounds failed', err);
     }
     this.settleTimer = setTimeout(() => {
-      if (this.win.isDestroyed()) return;
+      if (this.win.isDestroyed()) return this.settled();
       const got = this.win.getBounds();
       const off = Math.abs(got.x - b.x) > 2 || Math.abs(got.y - b.y) > 2 || Math.abs(got.width - b.width) > 2 || Math.abs(got.height - b.height) > 2;
       if (off && attempt < 3) {
@@ -271,7 +303,7 @@ export class DockController {
       }
       if (off) log('Dock position still wrong after retries: wanted', b, 'got', got);
       // 'moved'/'resized' events fire asynchronously; only listen to the user again once settled.
-      this.settingBounds = false;
+      this.settled();
     }, 120);
   }
 }

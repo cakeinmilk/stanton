@@ -23,6 +23,32 @@ contextBridge.exposeInMainWorld('stanton', {
   setMinimizeToTray: (on: boolean) => ipcRenderer.invoke('tray:set', on),
   saveFile: (name: string, content: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> => ipcRenderer.invoke('file:save', name, content, filters),
   openFile: (filters: { name: string; extensions: string[] }[]): Promise<{ name: string; content: string } | null> => ipcRenderer.invoke('file:open', filters),
+  outlookEvents: (offsetDays: number, days: number) => ipcRenderer.invoke('outlook:events', offsetDays, days),
+  telegram: {
+    status: () => ipcRenderer.invoke('telegram:status'),
+    setToken: (token: string) => ipcRenderer.invoke('telegram:set-token', token),
+    startPairing: () => ipcRenderer.invoke('telegram:start-pairing'),
+    unpair: () => ipcRenderer.invoke('telegram:unpair'),
+    disconnect: () => ipcRenderer.invoke('telegram:disconnect'),
+    onStatus: (cb: (s: unknown) => void) => {
+      const l = (_: unknown, s: unknown) => cb(s);
+      ipcRenderer.on('telegram:status', l);
+      return () => ipcRenderer.removeListener('telegram:status', l);
+    },
+    onCommand: (cb: (msg: { id: string; text: string; image?: string; from: string }) => Promise<string>) => {
+      const l = async (_: unknown, msg: { id: string; text: string; image?: string; from: string }) => {
+        let reply = '';
+        try {
+          reply = await cb(msg);
+        } catch (e) {
+          reply = `Sorry, something went wrong: ${(e as Error).message}`;
+        }
+        void ipcRenderer.invoke('telegram:reply', msg.id, reply);
+      };
+      ipcRenderer.on('telegram:command', l);
+      return () => ipcRenderer.removeListener('telegram:command', l);
+    },
+  },
   ai: {
     hasKey: (): Promise<boolean> => ipcRenderer.invoke('ai:has-key'),
     setKey: (key: string | null): Promise<boolean> => ipcRenderer.invoke('ai:set-key', key),

@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
 import type { ActionPoint, ActionStatus, Entry, Page, Project } from '../types';
+import { SCRATCH_PAGE_ID, SCRATCH_PROJECT } from './scratch';
 
 /** Attribute names used on listItem / taskItem nodes. */
 export const ACTION_ATTR = 'action';
@@ -69,7 +70,7 @@ export function collectActionPoints(entries: Entry[], pages: Page[], projects: P
   for (const entry of entries) {
     const page = pageById.get(entry.pageId);
     if (!page) continue;
-    const project = projectById.get(page.projectId);
+    const project = page.id === SCRATCH_PAGE_ID ? SCRATCH_PROJECT : projectById.get(page.projectId);
     if (!project) continue;
     if (!opts.includeArchived && (page.archivedAt || project.archivedAt)) continue;
     if (entry.action === 'open' || entry.action === 'done') {

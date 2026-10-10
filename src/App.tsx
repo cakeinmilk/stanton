@@ -11,6 +11,7 @@ import { ContextMenuHost } from './components/Menu';
 import { SettingsView } from './components/SettingsView';
 import { PlanView } from './components/PlanView';
 import { bridge } from './lib/platform';
+import { handleRemoteMessage } from './lib/remote';
 
 const COMPACT_WIDTH = 760;
 
@@ -40,6 +41,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
   }, [scheme]);
+  // Messages sent to Stanton's Telegram bot.
+  useEffect(() => (loaded ? bridge.telegram.onCommand(handleRemoteMessage) : undefined), [loaded]);
   const minimizeToTray = useStore((s) => s.prefs.minimizeToTray);
   useEffect(() => {
     if (loaded) void bridge.setMinimizeToTray(minimizeToTray);

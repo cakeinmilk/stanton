@@ -5,16 +5,20 @@ import { NoteEditor } from '../editor/NoteEditor';
 import { contextMenu, MenuButton, type MenuEntry } from './Menu';
 import { PinnedStrip } from './PinnedStrip';
 import { InlineTitle } from './InlineTitle';
-import { deleteEntry, pageMenu, pinMenu } from '../lib/commands';
+import { deleteEntry, entryMoveMenu, pageMenu, pinMenu } from '../lib/commands';
+import { SCRATCH_PAGE_ID, SCRATCH_PROJECT } from '../lib/scratch';
 import { pinIcon } from '../lib/pins';
-import { FlagIcon, PinIcon } from './Icons';
+import { CalendarIcon, FlagIcon, PinIcon } from './Icons';
+import { CalendarImport } from './CalendarImport';
 import { extractActions, nodeText } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
 import { projectStyle } from '../lib/theme';
 
 export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: string; focusEntryId?: string; focusActionId?: string }) {
   const page = useStore((s) => s.pages.find((p) => p.id === pageId));
-  const project = useStore((s) => s.projects.find((p) => p.id === page?.projectId));
+  const realProject = useStore((s) => s.projects.find((p) => p.id === page?.projectId));
+  const isScratch = pageId === SCRATCH_PAGE_ID;
+  const project = isScratch ? SCRATCH_PROJECT : realProject;
   const allEntries = useStore((s) => s.entries);
   const sort = useStore((s) => s.prefs.entrySort);
   const setEntrySort = useStore((s) => s.setEntrySort);
@@ -22,6 +26,7 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
   const renamePage = useStore((s) => s.renamePage);
   const navigate = useStore((s) => s.navigate);
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const entries = useMemo(() => {
@@ -58,20 +63,34 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
   };
 
   return (
-    <div className="view themed" style={projectStyle(project.color)}>
-      <header className="view-header" onContextMenu={contextMenu(() => pageMenu(pageId))}>
-        <div className="grow">
-          <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'project', projectId: project.id })}>
-            <span className="dot" style={{ background: project.color }} /> {project.name}
-          </button>
-          <InlineTitle value={page.title} onChange={(t) => renamePage(pageId, t)} placeholder="Page title" />
-        </div>
-        <div className="header-actions">
-          <MenuButton items={pageMenu(pageId)} label="Page actions" />
-        </div>
-      </header>
+    <div className={isScratch ? 'view' : 'view themed'} style={isScratch ? undefined : projectStyle(project.color)}>
+      {isScratch ? (
+        <header className="view-header">
+          <div className="grow">
+            <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'home' })}>
+              ⌂ Home
+            </button>
+            <h1>Scratchpad</h1>
+            <p className="setting-hint">Jot things down here, then use a meeting or note's ⋯ menu → Move to… to file it in a project.</p>
+          </div>
+        </header>
+      ) : (
+        <>
+          <header className="view-header" onContextMenu={contextMenu(() => pageMenu(pageId))}>
+            <div className="grow">
+              <button type="button" className="eyebrow link" onClick={() => navigate({ name: 'project', projectId: project.id })}>
+                <span className="dot" style={{ background: project.color }} /> {project.name}
+              </button>
+              <InlineTitle value={page.title} onChange={(t) => renamePage(pageId, t)} placeholder="Page title" />
+            </div>
+            <div className="header-actions">
+              <MenuButton items={pageMenu(pageId)} label="Page actions" />
+            </div>
+          </header>
 
-      <PinnedStrip projectId={project.id} pageId={pageId} />
+          <PinnedStrip projectId={project.id} pageId={pageId} />
+        </>
+      )}
 
       <div className="page-toolbar">
         <button type="button" className="btn btn-primary" onClick={() => add('meeting')}>
@@ -79,6 +98,9 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
         </button>
         <button type="button" className="btn btn-accent" onClick={() => add('note')}>
           ＋ Note
+        </button>
+        <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowCalendar(true)} title="Start notes for meetings in your Outlook calendar">
+          <CalendarIcon /> From calendar
         </button>
         <span className="grow" />
         <button
@@ -90,6 +112,8 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
           {sort === 'newest' ? '↓ Newest first' : '↑ Oldest first'}
         </button>
       </div>
+
+      {showCalendar && <CalendarImport pageId={pageId} onClose={() => setShowCalendar(false)} />}
 
       <div className="entries" ref={listRef}>
         {!entries.length && <p className="empty-hint">This page is empty. Add a meeting or a note to begin.</p>}
@@ -119,7 +143,8 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
     entry.action
       ? { label: `Remove ${entry.kind} action point`, icon: <FlagIcon size={15} />, onSelect: () => setEntryAction(entry.id, null) }
       : { label: `Make whole ${entry.kind} an action point`, icon: <FlagIcon size={15} filled />, onSelect: () => setEntryAction(entry.id, 'open') },
-    ...pinMenu(entry.id),
+    ...(entry.pageId === SCRATCH_PAGE_ID ? [] : pinMenu(entry.id)),
+    { label: 'Move to…', icon: '→', submenu: entryMoveMenu(entry.id) },
     'separator',
     isMeeting
       ? { label: 'Convert to note', icon: '📝', onSelect: () => updateEntry(entry.id, { kind: 'note' }) }
