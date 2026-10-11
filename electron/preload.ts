@@ -23,7 +23,6 @@ contextBridge.exposeInMainWorld('stanton', {
   setMinimizeToTray: (on: boolean) => ipcRenderer.invoke('tray:set', on),
   saveFile: (name: string, content: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> => ipcRenderer.invoke('file:save', name, content, filters),
   openFile: (filters: { name: string; extensions: string[] }[]): Promise<{ name: string; content: string } | null> => ipcRenderer.invoke('file:open', filters),
-  outlookEvents: (offsetDays: number, days: number) => ipcRenderer.invoke('outlook:events', offsetDays, days),
   telegram: {
     status: () => ipcRenderer.invoke('telegram:status'),
     setToken: (token: string) => ipcRenderer.invoke('telegram:set-token', token),

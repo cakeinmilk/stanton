@@ -31,23 +31,8 @@ export interface StantonBridge {
   /** Ask where to save, then write the file. Resolves to the saved path, or null if cancelled. */
   saveFile(name: string, content: string, filters: FileFilter[]): Promise<string | null>;
   openFile(filters: FileFilter[]): Promise<{ name: string; content: string } | null>;
-  outlookEvents(offsetDays: number, days: number): Promise<CalendarEvent[]>;
   telegram: TelegramBridge;
   ai: AiBridge;
-}
-
-export interface CalendarEvent {
-  id: string;
-  subject: string;
-  /** Local time, yyyy-mm-ddTHH:mm:ss */
-  start: string;
-  end: string;
-  allDay: boolean;
-  location: string;
-  organizer: string;
-  attendees: string[];
-  agenda: string;
-  teams: boolean;
 }
 
 export interface TelegramStatus {
@@ -186,9 +171,6 @@ const browserBridge: StantonBridge = {
       };
       input.click();
     });
-  },
-  async outlookEvents() {
-    throw new Error('Outlook import works in the Stanton desktop app on Windows.');
   },
   telegram: {
     async status() {

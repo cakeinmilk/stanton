@@ -19,7 +19,6 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 - **Pinned notes.** Pin any meeting or note from its ⋯ or right-click menu. It appears as a chip at the top of its own page and of the project page; click it to jump there. Right-click a chip to give it an emoji or unpin it.
 - **Important dates** for each project (deadlines, launches, key meetings) appear above its action points. Home shows a **Coming up** list for the next three weeks, including today. Right-click a date and choose **Create meeting** to start notes for it.
 - **Scratchpad** (under Home) for quick notes and meetings. File them later with the ⋯ / right-click menu → **Move to…**, which works on any meeting or note.
-- **From calendar:** on any page, pull meetings from the classic **Outlook** desktop calendar (Teams meetings included) or from an `.ics` invite. Each one becomes a meeting with its time, attendees and agenda filled in.
 - **Telegram:** connect your own bot (Settings → Telegram) to message Stanton from your phone. Messages and photos land in the Scratchpad. `/todo`, `/actions`, `/done`, `/today` and `/dates` let you check and tick off action points while you're away. On work PCs, check with IT first: security software such as CrowdStrike may block programs that connect to Telegram. If Stanton is stopped while connected, it won't reconnect automatically next time; Settings explains what happened and lets you disconnect.
 - **Home** can list projects as cards or as a compact list.
 - **Backup & export.** Export everything (Settings) or a single project (its menu). There are three formats: a **Stanton backup** you can re-import, with images included; a **web page** to open in or paste into Word, OneNote or email; and **Markdown** for apps such as Obsidian or Notion. Importing a backup adds its projects alongside your existing ones.
@@ -39,6 +38,18 @@ The data folder `%APPDATA%\Stanton\data\` contains:
 
 - `stanton.json` holds all projects, pages and entries. It is written atomically, and the previous version is kept as `stanton.json.bak`.
 - `images\` holds pasted and inserted images.
+
+### Moving to another PC without an export
+
+Uninstalling Stanton does **not** delete your notes. They stay in `%APPDATA%\Stanton\data\`:
+
+- `stanton.json`: all projects, pages, meetings, notes, dates and action points
+- `stanton.json.bak`: the previous save, in case the main file is damaged
+- `images\`: pasted and inserted images
+
+**To replace everything on the new PC:** close Stanton there, then copy the whole `data` folder over its `%APPDATA%\Stanton\data`. When Stanton starts, it shows everything exactly as it was.
+
+**To add the old notes alongside existing ones:** first copy the files from the old `images` folder into the new PC's `%APPDATA%\Stanton\data\images`. The file names are unique, so nothing is overwritten. Then go to Settings → Backup & export → **Import from a backup…** and pick the old `stanton.json`. Choose "All files" in the file picker if it isn't listed.
 
 ## Development
 

@@ -8,8 +8,7 @@ import { InlineTitle } from './InlineTitle';
 import { deleteEntry, entryMoveMenu, pageMenu, pinMenu } from '../lib/commands';
 import { SCRATCH_PAGE_ID, SCRATCH_PROJECT } from '../lib/scratch';
 import { pinIcon } from '../lib/pins';
-import { CalendarIcon, FlagIcon, PinIcon } from './Icons';
-import { CalendarImport } from './CalendarImport';
+import { FlagIcon, PinIcon } from './Icons';
 import { extractActions, nodeText } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
 import { projectStyle } from '../lib/theme';
@@ -26,7 +25,6 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
   const renamePage = useStore((s) => s.renamePage);
   const navigate = useStore((s) => s.navigate);
   const [justAdded, setJustAdded] = useState<string | null>(null);
-  const [showCalendar, setShowCalendar] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const entries = useMemo(() => {
@@ -99,9 +97,6 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
         <button type="button" className="btn btn-accent" onClick={() => add('note')}>
           ＋ Note
         </button>
-        <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowCalendar(true)} title="Start notes for meetings in your Outlook calendar">
-          <CalendarIcon /> From calendar
-        </button>
         <span className="grow" />
         <button
           type="button"
@@ -112,8 +107,6 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
           {sort === 'newest' ? '↓ Newest first' : '↑ Oldest first'}
         </button>
       </div>
-
-      {showCalendar && <CalendarImport pageId={pageId} onClose={() => setShowCalendar(false)} />}
 
       <div className="entries" ref={listRef}>
         {!entries.length && <p className="empty-hint">This page is empty. Add a meeting or a note to begin.</p>}

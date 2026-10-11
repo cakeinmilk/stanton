@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useStore } from '../src/store';
 import { handleRemoteMessage, linesToDoc } from '../src/lib/remote';
-import { parseIcs } from '../src/lib/ics';
 import { emptyData } from '../src/lib/seed';
 import { SCRATCH_PAGE_ID } from '../src/lib/scratch';
 import { collectActionPoints, extractActions } from '../src/lib/actions';
@@ -54,36 +53,5 @@ describe('Telegram commands', () => {
   it('linesToDoc keeps paragraphs and bullets apart', () => {
     const doc = linesToDoc(['Intro', '• one', '* two', 'Outro']);
     expect(doc.content?.map((n) => n.type)).toEqual(['paragraph', 'bulletList', 'paragraph']);
-  });
-});
-
-describe('ics import', () => {
-  it('reads a Teams invite', () => {
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'BEGIN:VEVENT',
-      'UID:abc-123',
-      'SUMMARY:Quarterly review',
-      'DTSTART;TZID=GMT Standard Time:20261012T093000',
-      'DTEND;TZID=GMT Standard Time:20261012T103000',
-      'LOCATION:Microsoft Teams Meeting',
-      'ORGANIZER;CN=Stephanie Lee:mailto:steph@example.com',
-      'ATTENDEE;CN="Jake Brown";ROLE=REQ-PARTICIPANT:mailto:jake@example.com',
-      'ATTENDEE;CN=Matt:mailto:matt@example.com',
-      'DESCRIPTION:Agenda:\\n- Numbers\\n- Next steps\\n________________________________\\nMicrosoft Teams meeting\\nJoin',
-      ' on your computer',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n');
-    const [ev] = parseIcs(ics);
-    expect(ev).toMatchObject({
-      id: 'ics:abc-123',
-      subject: 'Quarterly review',
-      start: '2026-10-12T09:30:00',
-      organizer: 'Stephanie Lee',
-      attendees: ['Jake Brown', 'Matt'],
-      teams: true,
-      agenda: 'Agenda:\n- Numbers\n- Next steps',
-    });
   });
 });

@@ -5,7 +5,6 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { DockController, DockEdge } from './appbar';
 import { registerAiIpc } from './ai';
-import { registerOutlookIpc } from './outlook';
 import { initTelegram, stopTelegram } from './telegram';
 import { log } from './log';
 
@@ -262,7 +261,6 @@ function registerIpc() {
     await writeSettings(settings);
   });
   registerAiIpc();
-  registerOutlookIpc();
   ipcMain.on('window:minimize', () => {
     if (settings.minimizeToTray ?? true) hideToTray();
     else win?.minimize();
