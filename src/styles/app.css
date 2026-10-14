@@ -505,7 +505,7 @@ li > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shadow: 0 
 .swatch.custom { position: relative; overflow: hidden; background: conic-gradient(#e33, #ec3, #3c6, #3cc, #36e, #c3c, #e33); cursor: pointer; }
 .swatch.custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 
-/* Settings & weekly plan */
+/* Settings */
 .setting-text { margin: 4px 0 8px; line-height: 1.5; }
 .setting-steps { margin: 6px 0 12px; padding-left: 20px; line-height: 2; }
 .setting-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin: 8px 0; }
@@ -524,41 +524,13 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .pill.ok { background: var(--primary-soft); color: var(--primary-strong); }
 .callout { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-left: 4px solid var(--yellow-400); }
 .callout p { margin: 0; flex: 1; }
-.plan-options { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
 .check { display: flex; align-items: center; gap: 6px; font-size: 13px; height: 34px; }
 .check input { accent-color: var(--primary); }
-.plan-summary { margin: 12px 0 4px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .link-btn { border: 0; background: none; padding: 0; color: var(--primary); text-decoration: underline; font-size: inherit; }
-.prompt-preview {
-  max-height: 260px; overflow: auto; white-space: pre-wrap; background: var(--surface-2); border-radius: 8px;
-  padding: 10px; font-size: 12px; border: 1px solid var(--border);
-}
-.plan-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.template-editor { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.plan-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
-.plan-doc { margin: 8px 0; }
-.notes-input { font-family: inherit !important; font-size: 14px !important; min-height: 140px; }
-.plan-checks { display: flex; flex-direction: column; }
-.check.sub { padding-left: 22px; height: 26px; color: var(--muted); }
-.picker { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
-.picker-body { margin-top: 6px; }
-.picker-head { display: flex; align-items: center; gap: 10px; }
 .text-input.small { height: 28px; padding: 0 6px; }
-.picker-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
-.picker-list li .check { height: auto; padding: 5px 4px; border-radius: 6px; flex-wrap: wrap; }
-.picker-list li .check:hover { background: var(--surface-2); }
-.picker-title { font-weight: 600; }
-.picker-meta { font-size: 12px; color: var(--muted); }
 /* Sub-bullets use hollow circles, like Google Docs / Gemini */
 .note-content ul ul { list-style-type: circle; }
 .note-content ul ul ul { list-style-type: square; }
-.model-picker { min-width: 220px; }
-.model-picker select { max-width: 100%; }
-.model-picker.compact { flex: 0 1 300px; }
-.model-hint { font-size: 12px; color: var(--muted); }
-.model-hint.error { color: var(--danger); }
-.plan-actions { align-items: flex-end; flex-wrap: wrap; }
-.plan-actions .model-picker { margin-left: auto; }
 
 /* Drag and drop in the sidebar */
 .nav-row[draggable='true'] { cursor: grab; }
@@ -662,8 +634,28 @@ textarea.text-input { width: 100%; height: auto; padding: 10px; font-family: Con
 .toast.error { background: var(--danger); }
 .icon-btn.btn-like { width: auto; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; }
 .icon-btn.btn-like:hover { border-color: var(--primary-line); background: var(--surface); }
-.pairing { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
-.tg-help summary { cursor: pointer; font-weight: 600; margin: 6px 0; }
-.tg-help pre { white-space: pre-wrap; background: var(--surface-2); padding: 10px; border-radius: 8px; font-size: 12px; }
 code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 .callout.warn { border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border)); border-left: 4px solid var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
+.tb-icon { display: inline-grid; place-items: center; }
+.tb-icon .svg-icon { vertical-align: 0; }
+.dock-btn { color: rgba(255, 255, 255, 0.85); }
+.dock-btn:hover:not(:disabled) { color: #fff; }
+.dock-btn.is-on { background: var(--yellow-400); color: var(--teal-900); }
+.dock-btn.is-on:hover { background: color-mix(in srgb, var(--yellow-400) 85%, white); }
+
+/* Task lists */
+.entry-card.kind-task { border-left-color: var(--primary); border-left-style: solid; }
+.kind-badge.task { background: var(--primary-soft); color: var(--primary-strong); border: 1px solid var(--primary-line); }
+.task-progress { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.task-progress.all-done { background: var(--primary); color: var(--on-primary); }
+.note-content ul[data-type='taskList'] input[type='checkbox'] { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+.note-content ul[data-type='taskList'] li > label { margin-top: 4px; }
+.note-content ul[data-type='taskList'] li[data-checked='true'] > div > p { text-decoration: line-through; color: var(--muted); }
+/* Stars on checklist items (their text sits inside a <div>, not directly in the <li>) */
+li:hover > div > .ap-gutter .ap-star { opacity: 0.55; }
+li > div > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shadow: 0 0 1px #c99a00; }
+.note-content li[data-action='open'] > div > p { background: var(--action-bg); box-shadow: inset 3px 0 0 var(--star-line); font-weight: 500; border-radius: 4px; padding: 0 4px; }
+.note-content li[data-action='done'] > div > p { text-decoration: line-through; color: var(--muted); }
+.note-content ul[data-type='taskList'] .ap-gutter { left: -50px; top: 2px; }
+.note-content ul[data-type='taskList'] .ap-gutter:has(.ap-check) { left: -68px; }
+.note-content ul[data-type='taskList'] { padding-left: 52px; }

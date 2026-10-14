@@ -5,6 +5,7 @@ import { emptyData, normalize, seedData } from './lib/seed';
 import { nowIso, PROJECT_COLORS, todayIso, uid } from './lib/util';
 import { setActionStatusInContent, wholeActionId } from './lib/actions';
 import { SCRATCH_PAGE_ID } from './lib/scratch';
+import { blankContent } from './lib/kinds';
 import { bridge } from './lib/platform';
 
 interface UiState {
@@ -200,10 +201,7 @@ export const useStore = create<Store>()((set, get) => {
         date: todayIso(),
         createdAt: now,
         updatedAt: now,
-        content:
-          kind === 'meeting'
-            ? { type: 'doc', content: [{ type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] }] }
-            : { type: 'doc', content: [{ type: 'paragraph' }] },
+        content: blankContent(kind),
       };
       set((s) => ({ entries: [...s.entries, entry] }));
       return id;

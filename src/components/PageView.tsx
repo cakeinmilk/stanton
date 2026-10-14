@@ -8,6 +8,7 @@ import { InlineTitle } from './InlineTitle';
 import { deleteEntry, entryMoveMenu, pageMenu, pinMenu } from '../lib/commands';
 import { SCRATCH_PAGE_ID, SCRATCH_PROJECT } from '../lib/scratch';
 import { pinIcon } from '../lib/pins';
+import { bulletsToTasks, KIND_ICON, KIND_LABEL, taskProgress } from '../lib/kinds';
 import { FlagIcon, PinIcon } from './Icons';
 import { extractActions, nodeText } from '../lib/actions';
 import { formatDate, formatDateTime, todayIso } from '../lib/util';
@@ -97,6 +98,9 @@ export function PageView({ pageId, focusEntryId, focusActionId }: { pageId: stri
         <button type="button" className="btn btn-accent" onClick={() => add('note')}>
           ＋ Note
         </button>
+        <button type="button" className="btn btn-accent" onClick={() => add('task')} title="A checklist of tasks">
+          ＋ Task
+        </button>
         <span className="grow" />
         <button
           type="button"
@@ -123,6 +127,16 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
   const setEntryContent = useStore((s) => s.setEntryContent);
   const rev = useStore((s) => s.externalRev[entry.id] ?? 0);
   const isMeeting = entry.kind === 'meeting';
+  const isTask = entry.kind === 'task';
+  const progress = useMemo(() => (isTask ? taskProgress(entry.content) : null), [isTask, entry.content]);
+  const convertTo = (kind: EntryKind) => {
+    if (kind === 'task') {
+      // Bullets become checkboxes; editors pick the change up through externalRev.
+      setEntryContent(entry.id, bulletsToTasks(entry.content));
+      useStore.setState((s) => ({ externalRev: { ...s.externalRev, [entry.id]: (s.externalRev[entry.id] ?? 0) + 1 } }));
+    }
+    updateEntry(entry.id, { kind });
+  };
   const actions = useMemo(() => extractActions(entry.content), [entry.content]);
   const openCount = actions.filter((a) => a.status === 'open').length;
   const [title, setTitle] = useState(entry.title);
@@ -132,16 +146,21 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
   const setEntryPin = useStore((s) => s.setEntryPin);
   const setEntryAction = useStore((s) => s.setEntryAction);
 
+  const noun = isTask ? 'task list' : entry.kind;
   const menu = (): MenuEntry[] => [
     entry.action
-      ? { label: `Remove ${entry.kind} action point`, icon: <FlagIcon size={15} />, onSelect: () => setEntryAction(entry.id, null) }
-      : { label: `Make whole ${entry.kind} an action point`, icon: <FlagIcon size={15} filled />, onSelect: () => setEntryAction(entry.id, 'open') },
+      ? { label: `Remove ${noun} action point`, icon: <FlagIcon size={15} />, onSelect: () => setEntryAction(entry.id, null) }
+      : { label: `Make whole ${noun} an action point`, icon: <FlagIcon size={15} filled />, onSelect: () => setEntryAction(entry.id, 'open') },
     ...(entry.pageId === SCRATCH_PAGE_ID ? [] : pinMenu(entry.id)),
     { label: 'Move to…', icon: '→', submenu: entryMoveMenu(entry.id) },
     'separator',
-    isMeeting
-      ? { label: 'Convert to note', icon: '📝', onSelect: () => updateEntry(entry.id, { kind: 'note' }) }
-      : { label: 'Convert to meeting', icon: '👥', onSelect: () => updateEntry(entry.id, { kind: 'meeting' }) },
+    {
+      label: 'Convert to',
+      icon: '⇄',
+      submenu: (['meeting', 'note', 'task'] as EntryKind[])
+        .filter((k) => k !== entry.kind)
+        .map((k): MenuEntry => ({ label: k === 'task' ? 'Tasks (bullets become checkboxes)' : KIND_LABEL[k], icon: KIND_ICON[k], onSelect: () => convertTo(k) })),
+    },
     ...(!isMeeting ? [{ label: 'Set date to today', icon: '📅', onSelect: () => updateEntry(entry.id, { date: todayIso() }) }] : []),
     'separator',
     { label: 'Delete…', icon: '🗑', danger: true, onSelect: () => void deleteEntry(entry.id) },
@@ -159,7 +178,7 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
         >
           {entry.collapsed ? '▸' : '▾'}
         </button>
-        <span className={`kind-badge ${entry.kind}`}>{isMeeting ? 'Meeting' : 'Note'}</span>
+        <span className={`kind-badge ${entry.kind}`}>{KIND_LABEL[entry.kind]}</span>
         {isMeeting ? (
           <label className="date-chip" title="Meeting date">
             <span className="sr-only">Meeting date</span>
@@ -169,7 +188,7 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
         <input
           className={`entry-title${!title && hasNotes ? ' quiet-placeholder' : ''}`}
           value={title}
-          placeholder={isMeeting ? 'Meeting title' : 'Note title'}
+          placeholder={isMeeting ? 'Meeting title' : isTask ? 'Task list title' : 'Note title'}
           aria-label="Title"
           autoFocus={isNew}
           onChange={(e) => setTitle(e.target.value)}
@@ -224,6 +243,11 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
             ★ {openCount}
           </span>
         )}
+        {progress && progress.total > 0 && (
+          <span className={`task-progress${progress.done === progress.total ? ' all-done' : ''}`} title={`${progress.done} of ${progress.total} tasks done`}>
+            ✓ {progress.done}/{progress.total}
+          </span>
+        )}
         <MenuButton label="Entry actions" items={menu()} />
       </header>
       {!entry.collapsed && (
@@ -231,11 +255,11 @@ function EntryCard({ entry, isNew }: { entry: Entry; isNew: boolean }) {
           <NoteEditor
             content={entry.content}
             externalRev={rev}
-            placeholder={isMeeting ? 'Bullet points… click ☆ to make one an action point' : 'Write, paste text or images…'}
+            placeholder={isMeeting ? 'Bullet points… click ☆ to make one an action point' : isTask ? 'Add a task… (Enter for the next one)' : 'Write, paste text or images…'}
             onChange={(c) => setEntryContent(entry.id, c)}
           />
           <footer className="entry-foot">
-            {isMeeting ? formatDate(entry.date) : `Note · ${formatDate(entry.date)}`} · edited {formatDateTime(entry.updatedAt)}
+            {isMeeting ? formatDate(entry.date) : `${KIND_LABEL[entry.kind]} · ${formatDate(entry.date)}`} · edited {formatDateTime(entry.updatedAt)}
           </footer>
         </>
       )}

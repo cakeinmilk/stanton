@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bridge, isElectron, type DockState } from '../lib/platform';
 import { useStore } from '../store';
+import { CloseIcon, DockIcon, MaximiseIcon, MinimiseIcon } from './Icons';
 import { SCRATCH_PAGE_ID, SCRATCH_PROJECT_ID } from '../lib/scratch';
 
 export function useDock() {
@@ -66,7 +67,7 @@ export function TitleBar({ compact, onToggleNav, dockState }: { compact: boolean
             aria-label={dock === 'left' ? 'Undock' : 'Dock left'}
             onClick={() => void bridge.dock(dock === 'left' ? null : 'left')}
           >
-            ⇤
+            <DockIcon edge="left" docked={dock === 'left'} />
           </button>
           <button
             type="button"
@@ -75,19 +76,19 @@ export function TitleBar({ compact, onToggleNav, dockState }: { compact: boolean
             aria-label={dock === 'right' ? 'Undock' : 'Dock right'}
             onClick={() => void bridge.dock(dock === 'right' ? null : 'right')}
           >
-            ⇥
+            <DockIcon edge="right" docked={dock === 'right'} />
           </button>
           <span className="tb-sep" />
           <button type="button" className="tb-icon" aria-label="Minimise" title="Minimise" onClick={() => bridge.minimize()}>
-            ―
+            <MinimiseIcon />
           </button>
           {!dock && (
             <button type="button" className="tb-icon" aria-label="Maximise" title="Maximise" onClick={() => bridge.toggleMaximize()}>
-              ☐
+              <MaximiseIcon />
             </button>
           )}
           <button type="button" className="tb-icon close" aria-label="Close" title="Close" onClick={() => bridge.close()}>
-            ✕
+            <CloseIcon />
           </button>
         </div>
       )}
@@ -111,19 +112,17 @@ export function QuickSwitcher() {
     <div className="quick-switcher">
       <select
         aria-label="Project"
-        value={view.name === 'home' ? '__home' : view.name === 'archive' ? '__archive' : view.name === 'page' && view.pageId === SCRATCH_PAGE_ID ? '__scratch' : view.name === 'plan' ? '__plan' : projectId ?? ''}
+        value={view.name === 'home' ? '__home' : view.name === 'archive' ? '__archive' : view.name === 'page' && view.pageId === SCRATCH_PAGE_ID ? '__scratch' : projectId ?? ''}
         onChange={(e) => {
           const v = e.target.value;
           if (v === '__home') navigate({ name: 'home' });
           else if (v === '__scratch') navigate({ name: 'page', pageId: SCRATCH_PAGE_ID });
-          else if (v === '__plan') navigate({ name: 'plan' });
           else if (v === '__archive') navigate({ name: 'archive' });
           else navigate({ name: 'project', projectId: v });
         }}
       >
         <option value="__home">⌂ Home</option>
         <option value="__scratch">🗒 Scratchpad</option>
-        <option value="__plan">✦ Weekly plan</option>
         {projects.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}

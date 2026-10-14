@@ -6,7 +6,8 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 
 ## Features
 
-- **Projects → Pages → Meetings & Notes.** Each page lists its meetings and notes by date, newest or oldest first. A meeting's title has its date in front of it.
+- **Projects → Pages → Meetings, Notes & Tasks.** A **Tasks** entry is a checklist; its header shows progress, e.g. ✓ 2/5. Use **Convert to** to turn a note's bullets into checkboxes.
+- **Pages hold meetings, notes and task lists.** Each page lists its meetings and notes by date, newest or oldest first. A meeting's title has its date in front of it.
 - **Action points.** Click the ☆ to the left of any bullet, or press `Ctrl+Shift+A`, to star it as an action point. The shortcut also works on a plain line, which becomes a starred bullet, and on several selected bullets at once. A **whole meeting or note** can be an action point too: click the ⚑ flag in its header, or press `Ctrl+Shift+A` in its title.
   - Open action points are pinned to the top of their **project**.
   - The **Home** page collects open action points from every project, grouped by project or as one list.
@@ -19,16 +20,13 @@ A lightweight meeting-notes app for Windows. It works like OneNote without the e
 - **Pinned notes.** Pin any meeting or note from its ⋯ or right-click menu. It appears as a chip at the top of its own page and of the project page; click it to jump there. Right-click a chip to give it an emoji or unpin it.
 - **Important dates** for each project (deadlines, launches, key meetings) appear above its action points. Home shows a **Coming up** list for the next three weeks, including today. Right-click a date and choose **Create meeting** to start notes for it.
 - **Scratchpad** (under Home) for quick notes and meetings. File them later with the ⋯ / right-click menu → **Move to…**, which works on any meeting or note.
-- **Telegram:** connect your own bot (Settings → Telegram) to message Stanton from your phone. Messages and photos land in the Scratchpad. `/todo`, `/actions`, `/done`, `/today` and `/dates` let you check and tick off action points while you're away. On work PCs, check with IT first: security software such as CrowdStrike may block programs that connect to Telegram. If Stanton is stopped while connected, it won't reconnect automatically next time; Settings explains what happened and lets you disconnect.
 - **Home** can list projects as cards or as a compact list.
 - **Backup & export.** Export everything (Settings) or a single project (its menu). There are three formats: a **Stanton backup** you can re-import, with images included; a **web page** to open in or paste into Word, OneNote or email; and **Markdown** for apps such as Obsidian or Notion. Importing a backup adds its projects alongside your existing ones.
 - **Minimise to the system tray** (on by default; you can turn it off in Settings). While Stanton is hidden, its docked strip of screen is released for other windows.
 - **Archive or delete** projects and pages from their ⋯ menus. Archived items are listed under **Archive**, where you can restore them.
 - **Search** across page titles and note text (`Ctrl+F`).
-- **Weekly plan with Google Gemini.** You type or paste your notes for the week. Stanton adds your open action points (optional), plus any meetings or notes you pick (none by default), and asks Gemini for a day-by-day plan laid out like your template. Each day gets a theme, a **Focus:** line and **Action:** bullets. You can edit it, copy it, open it as a Gmail draft, or save it as a note. To connect, go to **Settings → Google AI** and paste an API key from [Google AI Studio](https://aistudio.google.com/apikey). The key is encrypted with Windows DPAPI. **Show exactly what will be sent** shows the full request first.
 - **Project colours.** Each project's colour is used for its pages: the card edges, the Meeting and Note buttons, bullets, tick circles and badges. Stars are always yellow. You can pick a preset or any custom colour.
 - **Colour schemes:** Teal & yellow (#069494), Royal blue & orange-gold, or Graphite & amber. Each has light and dark modes, which follow Windows or can be set with the ◐ button or in **Settings**. Stars are always yellow.
-- **Gemini model picker** on the Weekly plan page and in Settings. Models are grouped Lite / Flash / Pro, lightest first.
 
 ## Data
 

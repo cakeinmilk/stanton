@@ -3,6 +3,7 @@ import type { ActionPoint, Project } from '../types';
 import { formatDate, formatDateTime } from '../lib/util';
 import { projectStyle } from '../lib/theme';
 import { FlagIcon } from './Icons';
+import { KIND_LABEL } from '../lib/kinds';
 
 export function ActionRow({ action, project, showProject }: { action: ActionPoint; project?: Project; showProject?: boolean }) {
   const ownProject = useStore((s) => s.projects.find((p) => p.id === action.projectId));
@@ -32,7 +33,7 @@ export function ActionRow({ action, project, showProject }: { action: ActionPoin
         <span className="action-text">
           {action.whole && (
             <span className="whole-tag" title={`The whole ${action.entryKind} is the action point`}>
-              <FlagIcon size={13} filled /> {action.entryKind === 'meeting' ? 'Meeting' : 'Note'}
+              <FlagIcon size={13} filled /> {KIND_LABEL[action.entryKind]}
             </span>
           )}
           {action.text}

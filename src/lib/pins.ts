@@ -1,5 +1,6 @@
 import type { Entry } from '../types';
 import { formatDate } from './util';
+import { KIND_LABEL } from './kinds';
 
 export const PIN_ICONS = ['📍', '⭐', '📝', '👥', '📅', '📊', '📈', '💡', '✅', '⚠️', '🔥', '🎯', '📎', '🔗', '💬', '📞', '📧', '💰', '🧭', '🗂️', '🛠️', '🚀', '❤️', '🔒'];
 
@@ -8,5 +9,5 @@ export const pinIcon = (e: Entry): string | null => e.pinIcon || null;
 
 export function entryLabel(e: Entry): string {
   if (e.title.trim()) return e.kind === 'meeting' ? `${formatDate(e.date)} · ${e.title}` : e.title;
-  return e.kind === 'meeting' ? `Meeting · ${formatDate(e.date)}` : `Note · ${formatDate(e.date)}`;
+  return `${KIND_LABEL[e.kind]} · ${formatDate(e.date)}`;
 }

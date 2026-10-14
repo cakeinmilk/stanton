@@ -4,8 +4,6 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { DockController, DockEdge } from './appbar';
-import { registerAiIpc } from './ai';
-import { initTelegram, stopTelegram } from './telegram';
 import { log } from './log';
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
@@ -132,8 +130,6 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      // Keep handling Telegram messages promptly while hidden in the tray.
-      backgroundThrottling: false,
       spellcheck: true,
     },
   });
@@ -206,6 +202,20 @@ function createWindow() {
   else void win.loadFile(path.join(__dirname, '../dist/index.html'));
 }
 
+/**
+ * Gemini (weekly plan) and Telegram were removed in 0.8.0. Delete the credentials they stored
+ * (encrypted Gemini key, Telegram bot token) so nothing sensitive is left behind.
+ */
+async function removeRetiredFeatureFiles() {
+  for (const f of ['secrets.json', 'telegram.json', 'telegram.running']) {
+    const p = path.join(app.getPath('userData'), f);
+    if (existsSync(p)) {
+      await fs.rm(p, { force: true }).catch(() => undefined);
+      log('Removed retired feature file', f);
+    }
+  }
+}
+
 async function saveImage(bytes: Buffer, mime: string) {
   const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/svg+xml': 'svg' } as Record<string, string>)[mime] ?? 'png';
   await fs.mkdir(imagesDir(), { recursive: true });
@@ -260,7 +270,6 @@ function registerIpc() {
     win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0a1e1e' : '#f3fafa');
     await writeSettings(settings);
   });
-  registerAiIpc();
   ipcMain.on('window:minimize', () => {
     if (settings.minimizeToTray ?? true) hideToTray();
     else win?.minimize();
@@ -318,12 +327,11 @@ if (!gotLock) {
     log(`Stanton ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
     registerIpc();
     createWindow();
-    void initTelegram(() => win, saveImage);
+    void removeRetiredFeatureFiles();
   });
 
   app.on('before-quit', () => {
     quitting = true;
-    stopTelegram();
     dock?.dispose();
     tray?.destroy();
   });

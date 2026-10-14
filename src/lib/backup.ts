@@ -6,6 +6,7 @@ import { collectActionPoints, extractActions } from './actions';
 import { docToHtml } from './export';
 import { formatDate, nowIso, uid } from './util';
 import { SCRATCH_PAGE_ID, SCRATCH_PROJECT_ID } from './scratch';
+import { untitled } from './kinds';
 
 /** File format for Stanton backups / transfers. Images are embedded as data URLs. */
 export interface StantonExport {
@@ -80,7 +81,7 @@ export async function buildExport(projectId?: string): Promise<StantonExport> {
     projects,
     pages,
     entries: await Promise.all(entries.map(async (e) => ({ ...e, content: await mapImages(e.content, toDataUrl, cache) }))),
-    ...(projectId ? {} : { prefs: { ...prefs, planNotes: '' } }),
+    ...(projectId ? {} : { prefs }),
   };
 }
 
@@ -124,7 +125,7 @@ export async function buildHtml(projectId?: string): Promise<string> {
       parts.push(`<h2>${esc(page.title)}</h2>`);
       const entries = data.entries.filter((e) => e.pageId === page.id).sort((a, b) => b.date.localeCompare(a.date));
       for (const e of entries) {
-        const title = `${e.kind === 'meeting' ? `${formatDate(e.date)} · ` : ''}${e.title || (e.kind === 'meeting' ? 'Untitled meeting' : 'Untitled note')}`;
+        const title = `${e.kind === 'meeting' ? `${formatDate(e.date)} · ` : ''}${e.title || untitled(e.kind)}`;
         const flag = e.action ? ` <span class="flag">${e.action === 'done' ? '✓ done' : '⚑ action'}</span>` : '';
         parts.push(`<article class="${e.kind}"><h3>${esc(title)}${flag}</h3>${docToHtml(e.content)}</article>`);
       }
@@ -230,7 +231,7 @@ export async function buildMarkdown(projectId?: string): Promise<string> {
       out.push(`## ${page.title}`, '');
       for (const e of data.entries.filter((x) => x.pageId === page.id).sort((a, b) => b.date.localeCompare(a.date))) {
         const flag = e.action === 'open' ? ' ⚑' : e.action === 'done' ? ' ✓' : '';
-        out.push(`### ${e.kind === 'meeting' ? `${formatDate(e.date)} · ` : ''}${e.title || `Untitled ${e.kind}`}${flag}`, '', docToMarkdown(e.content).trim(), '');
+        out.push(`### ${e.kind === 'meeting' ? `${formatDate(e.date)} · ` : ''}${e.title || untitled(e.kind)}${flag}`, '', docToMarkdown(e.content).trim(), '');
       }
     }
   }

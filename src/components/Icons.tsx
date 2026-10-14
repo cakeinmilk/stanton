@@ -43,3 +43,45 @@ export function CalendarIcon({ size = 16, className = '' }: P) {
     </svg>
   );
 }
+
+/** Window with a docked panel on one edge; the chevron shows which way clicking will move it. */
+export function DockIcon({ edge, docked, size = 18 }: { edge: 'left' | 'right'; docked: boolean; size?: number }) {
+  const left = edge === 'left';
+  // Panel strip along the chosen edge (rounded on the outer corners only).
+  const panel = left ? 'M5.5 5H9v14H5.5A2.5 2.5 0 0 1 3 16.5v-9A2.5 2.5 0 0 1 5.5 5Z' : 'M18.5 5H15v14h3.5a2.5 2.5 0 0 0 2.5-2.5v-9A2.5 2.5 0 0 0 18.5 5Z';
+  // Chevron points towards the edge to dock, away from it to undock.
+  const towardEdge = left !== docked;
+  const cx = left ? 15 : 9;
+  const chevron = towardEdge ? `M${cx + 1.5} 9l-3 3 3 3` : `M${cx - 1.5} 9l3 3-3 3`;
+  return (
+    <svg className="svg-icon dock-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d={panel} fill="currentColor" opacity={docked ? 1 : 0.35} />
+      <path d={chevron} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function MinimiseIcon({ size = 16 }: P) {
+  return (
+    <svg className="svg-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d="M6 12.5h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function MaximiseIcon({ size = 16 }: P) {
+  return (
+    <svg className="svg-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ size = 16 }: P) {
+  return (
+    <svg className="svg-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -7,12 +7,6 @@ export interface DockState {
 }
 export type ThemePref = 'system' | 'light' | 'dark';
 
-export interface AiBridge {
-  hasKey(): Promise<boolean>;
-  setKey(key: string | null): Promise<boolean>;
-  listModels(): Promise<{ id: string; label: string }[]>;
-  generate(model: string, system: string, prompt: string): Promise<string>;
-}
 
 export interface StantonBridge {
   platform: string;
@@ -31,37 +25,9 @@ export interface StantonBridge {
   /** Ask where to save, then write the file. Resolves to the saved path, or null if cancelled. */
   saveFile(name: string, content: string, filters: FileFilter[]): Promise<string | null>;
   openFile(filters: FileFilter[]): Promise<{ name: string; content: string } | null>;
-  telegram: TelegramBridge;
-  ai: AiBridge;
 }
 
-export interface TelegramStatus {
-  configured: boolean;
-  botName: string | null;
-  paired: boolean;
-  chatName: string | null;
-  pairingCode: string | null;
-  /** Not connected this session because Stanton was stopped while connected last time. */
-  suspended?: boolean;
-}
 
-export interface TelegramMessage {
-  id: string;
-  text: string;
-  image?: string;
-  from: string;
-}
-
-export interface TelegramBridge {
-  status(): Promise<TelegramStatus>;
-  setToken(token: string): Promise<TelegramStatus>;
-  startPairing(): Promise<TelegramStatus>;
-  unpair(): Promise<TelegramStatus>;
-  disconnect(): Promise<TelegramStatus>;
-  resume(): Promise<TelegramStatus>;
-  onStatus(cb: (s: TelegramStatus) => void): () => void;
-  onCommand(cb: (msg: TelegramMessage) => Promise<string>): () => void;
-}
 
 export interface FileFilter {
   name: string;
@@ -84,45 +50,6 @@ function blobToDataUrl(bytes: Uint8Array, mime: string): Promise<string> {
     reader.readAsDataURL(new Blob([bytes as BlobPart], { type: mime }));
   });
 }
-
-const GEMINI = 'https://generativelanguage.googleapis.com/v1beta';
-const KEY_STORAGE = 'stanton.geminiKey';
-
-/** Browser fallback (dev/tests only). In the desktop app the key lives in the main process. */
-async function geminiFetch(pathname: string, init: RequestInit = {}) {
-  const key = localStorage.getItem(KEY_STORAGE);
-  if (!key) throw new Error('No Google AI key saved. Add one in Settings.');
-  const res = await fetch(`${GEMINI}${pathname}`, { ...init, headers: { 'content-type': 'application/json', 'x-goog-api-key': key } });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body?.error?.message ?? `${res.status} ${res.statusText}`);
-  return body;
-}
-
-const browserAi: AiBridge = {
-  async hasKey() {
-    return !!localStorage.getItem(KEY_STORAGE);
-  },
-  async setKey(key) {
-    if (key) localStorage.setItem(KEY_STORAGE, key);
-    else localStorage.removeItem(KEY_STORAGE);
-    return !!key;
-  },
-  async listModels() {
-    const body = await geminiFetch('/models?pageSize=1000');
-    return (body.models ?? [])
-      .filter((m: any) => (m.supportedGenerationMethods ?? []).includes('generateContent') && /gemini/i.test(m.name))
-      .map((m: any) => ({ id: String(m.name).replace(/^models\//, ''), label: m.displayName ?? m.name }));
-  },
-  async generate(model, system, prompt) {
-    const body = await geminiFetch(`/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }] }),
-    });
-    const text = (body?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? '').join('').trim();
-    if (!text) throw new Error('Gemini returned an empty response.');
-    return text;
-  },
-};
 
 const browserBridge: StantonBridge = {
   platform: 'browser',
@@ -172,33 +99,6 @@ const browserBridge: StantonBridge = {
       input.click();
     });
   },
-  telegram: {
-    async status() {
-      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
-    },
-    async setToken() {
-      throw new Error('Telegram works in the Stanton desktop app.');
-    },
-    async startPairing() {
-      throw new Error('Telegram works in the Stanton desktop app.');
-    },
-    async unpair() {
-      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
-    },
-    async disconnect() {
-      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
-    },
-    async resume() {
-      return { configured: false, botName: null, paired: false, chatName: null, pairingCode: null };
-    },
-    onStatus() {
-      return () => undefined;
-    },
-    onCommand() {
-      return () => undefined;
-    },
-  },
-  ai: browserAi,
 };
 
 /** Electron prefixes errors thrown in the main process; show just the message. */

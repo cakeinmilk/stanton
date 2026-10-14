@@ -1,53 +1,10 @@
 import type { Prefs, StantonData } from '../types';
 import { SCRATCH_PAGE_ID, scratchPage } from './scratch';
 
-/** The original (v0.2.0) default, so it can be upgraded to the new one. */
-const OLD_DEFAULT_PLAN_TEMPLATE = `# Week of {{week_start}}
-
-## Top 3 priorities
-1.
-2.
-3.
-
-## Monday
--
-## Tuesday
--
-## Wednesday
--
-## Thursday
--
-## Friday
--
-
-## Waiting on others
--
-
-## Carry over / notes
--`;
-
-export const DEFAULT_PLAN_TEMPLATE = `## 📅 Your Weekly Plan at a Glance
-
-- **[Day] (Today): [Theme for the day]**
-  - **Focus:** [One line on what the day is about.]
-  - **Action:** [A specific task. Bold **people's names** and **key items**.]
-  - **Action:** [Another task.]
-- **[Next day]: [Theme for the day]**
-  - **Focus:** [...]
-  - **Action:** [...]
-
-(Continue for each working day up to Friday.)`;
-
 export const DEFAULT_PREFS: Prefs = {
   entrySort: 'newest',
   theme: 'system',
   scheme: 'teal',
-  aiModel: 'gemini-flash-latest',
-  planTemplate: DEFAULT_PLAN_TEMPLATE,
-  planDays: 7,
-  planIncludeDone: false,
-  planIncludeActions: true,
-  planNotes: '',
   homeProjectsView: 'cards',
   minimizeToTray: true,
 };
@@ -141,8 +98,8 @@ function withScratch(pages: StantonData['pages']) {
   return pages.some((p) => p.id === SCRATCH_PAGE_ID) ? pages : [...pages, scratchPage()];
 }
 
+/** Keep only known preferences (older versions stored settings for features since removed). */
 function upgradePrefs(prefs: Prefs): Prefs {
-  // Users who never edited the old default template get the new layout.
-  if (prefs.planTemplate.trim() === OLD_DEFAULT_PLAN_TEMPLATE.trim()) return { ...prefs, planTemplate: DEFAULT_PLAN_TEMPLATE };
-  return prefs;
+  const known = Object.keys(DEFAULT_PREFS) as (keyof Prefs)[];
+  return Object.fromEntries(known.map((k) => [k, prefs[k]])) as unknown as Prefs;
 }

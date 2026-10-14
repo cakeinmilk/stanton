@@ -118,9 +118,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="nav-icon">🗒</span> Scratchpad
             {scratchCount > 0 && <span className="count">{scratchCount}</span>}
           </button>
-          <button type="button" className={`nav-item${view.name === 'plan' ? ' is-active' : ''}`} onClick={() => go({ name: 'plan' })}>
-            <span className="nav-icon">✦</span> Weekly plan
-          </button>
 
           <div className="nav-section">
             <span>Projects</span>

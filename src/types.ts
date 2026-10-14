@@ -26,7 +26,7 @@ export interface Page {
   archivedAt?: string | null;
 }
 
-export type EntryKind = 'meeting' | 'note';
+export type EntryKind = 'meeting' | 'note' | 'task';
 
 export interface Entry {
   id: ID;
@@ -80,17 +80,6 @@ export interface Prefs {
   entrySort: 'newest' | 'oldest';
   theme: 'system' | 'light' | 'dark';
   scheme: ColorScheme;
-  /** Gemini model id used for the weekly plan, e.g. "gemini-flash-latest". */
-  aiModel: string;
-  /** The user's weekly plan template (Markdown/plain text). */
-  planTemplate: string;
-  /** How many days back the meeting/note picker looks. */
-  planDays: number;
-  planIncludeDone: boolean;
-  /** Include open action points in the plan request. */
-  planIncludeActions: boolean;
-  /** Free-form notes typed on the Weekly plan page (kept between sessions). */
-  planNotes: string;
   homeProjectsView: 'cards' | 'list';
   minimizeToTray: boolean;
 }
@@ -100,5 +89,4 @@ export type View =
   | { name: 'project'; projectId: ID }
   | { name: 'page'; pageId: ID; focusEntryId?: ID; focusActionId?: ID }
   | { name: 'archive' }
-  | { name: 'plan' }
   | { name: 'settings' };

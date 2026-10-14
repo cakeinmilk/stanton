@@ -1,10 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import type { ColorScheme } from '../types';
-import { bridge, isElectron, type DockState } from '../lib/platform';
-import { suggestModel, useModels } from '../lib/models';
-import { ModelPicker } from './ModelPicker';
-import { TelegramSettings } from './TelegramSettings';
+import { isElectron, type DockState } from '../lib/platform';
 import { MenuButton } from './Menu';
 import { exportMenu, runImport } from '../lib/commands';
 
@@ -14,7 +10,6 @@ const SCHEMES: { id: ColorScheme; name: string; side: string; primary: string; a
   { id: 'graphite', name: 'Graphite & amber', side: '#22262d', primary: '#454c59', accent: '#ffad33' },
 ];
 
-const AI_STUDIO_URL = 'https://aistudio.google.com/apikey';
 
 export function SettingsView({ dockState }: { dockState: DockState }) {
   const theme = useStore((s) => s.prefs.theme);
@@ -115,104 +110,7 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
         <p className="setting-hint">Importing adds the projects in the file alongside your existing ones; nothing is overwritten.</p>
       </section>
 
-      <TelegramSettings />
 
-      <GoogleAiSettings />
     </div>
-  );
-}
-
-function GoogleAiSettings() {
-  const model = useStore((s) => s.prefs.aiModel);
-  const setPrefs = useStore((s) => s.setPrefs);
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
-  const [key, setKey] = useState('');
-  const [status, setStatus] = useState<{ kind: 'ok' | 'error' | 'busy'; text: string } | null>(null);
-  const loadList = useModels((m) => m.load);
-
-  useEffect(() => {
-    void bridge.ai.hasKey().then(setHasKey);
-  }, []);
-
-  const loadModels = async () => {
-    setStatus({ kind: 'busy', text: 'Checking your key…' });
-    await loadList(true);
-    const { status: st, options, error } = useModels.getState();
-    if (st === 'error') {
-      setStatus({ kind: 'error', text: error ?? 'Could not reach Google.' });
-      return;
-    }
-    setStatus({ kind: 'ok', text: `Connected. ${options.length} Gemini text models available.` });
-    if (options.length && !options.some((m) => m.id === model)) setPrefs({ aiModel: suggestModel(options)! });
-  };
-
-  const save = async () => {
-    if (!key.trim()) return;
-    await bridge.ai.setKey(key.trim());
-    setKey('');
-    setHasKey(true);
-    await loadModels();
-  };
-
-  const remove = async () => {
-    await bridge.ai.setKey(null);
-    setHasKey(false);
-    useModels.setState({ options: [], status: 'idle', error: null });
-    setStatus(null);
-  };
-
-  return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>Google AI (Gemini)</h2>
-        {hasKey && <span className="pill ok">Connected</span>}
-      </div>
-      <p className="setting-text">
-        The <b>Weekly plan</b> uses Google Gemini to turn your action points and recent meetings into a plan based on your template. To connect your Google account:
-      </p>
-      <ol className="setting-steps">
-        <li>
-          <button type="button" className="btn btn-small btn-primary" onClick={() => void bridge.openExternal(AI_STUDIO_URL)}>
-            Open Google AI Studio ↗
-          </button>{' '}
-          and sign in with your Google account.
-        </li>
-        <li>
-          Click <b>Create API key</b>, copy it and paste it below. Your key is stored encrypted on this PC and only sent to Google.
-        </li>
-      </ol>
-      <div className="setting-row">
-        <input
-          type="password"
-          className="text-input grow"
-          placeholder={hasKey ? 'A key is saved. Paste a new one to replace it.' : 'Paste your Gemini API key'}
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void save()}
-          aria-label="Gemini API key"
-        />
-        <button type="button" className="btn btn-primary" disabled={!key.trim()} onClick={() => void save()}>
-          Save
-        </button>
-        {hasKey && (
-          <>
-            <button type="button" className="btn" onClick={() => void loadModels()}>
-              Test
-            </button>
-            <button type="button" className="btn btn-danger-ghost" onClick={() => void remove()}>
-              Remove
-            </button>
-          </>
-        )}
-      </div>
-      {status && <p className={`setting-status ${status.kind}`}>{status.text}</p>}
-      <div className="setting-row">
-        <ModelPicker hasKey={!!hasKey} />
-      </div>
-      <p className="setting-hint">
-        A Google AI Pro subscription covers the Gemini app, not API keys. API keys from AI Studio have their own free allowance, which is plenty for a weekly plan. On the free
-        allowance Google may use what you send to improve its products. Turning on billing for the key stops that.
-      </p>
-    </section>
   );
 }
