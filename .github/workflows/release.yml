@@ -26,16 +26,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Work out the release tag
-        id: tag
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Check
         run: |
           npm run typecheck
@@ -56,8 +46,79 @@ jobs:
             release/*.zip
           if-no-files-found: error
 
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Build the web app for Android
+        run: npm run build:android
+
+      # The signing key lives only in the repository's Actions secrets, never in the repo.
+      - name: Unpack the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Add the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets (Settings → Secrets and variables → Actions) – see README."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/stanton-release.jks"
+
+      - name: Build the APK
+        working-directory: android
+        env:
+          STANTON_KEYSTORE: ${{ runner.temp }}/stanton-release.jks
+          STANTON_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          mkdir -p ../release
+          cp app/build/outputs/apk/release/app-release.apk "../release/Stanton-$(node -p "require('../package.json').version").apk"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/stanton-release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stanton-android
+          path: release/*.apk
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, android]
+    if: startsWith(github.ref, 'refs/tags/') || inputs.publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the release tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/') || inputs.publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
@@ -67,3 +128,4 @@ jobs:
           files: |
             release/*.exe
             release/*.zip
+            release/*.apk

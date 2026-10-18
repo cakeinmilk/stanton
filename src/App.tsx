@@ -9,7 +9,8 @@ import { ArchiveView } from './components/ArchiveView';
 import { DialogHost, ToastHost } from './components/Dialogs';
 import { ContextMenuHost } from './components/Menu';
 import { SettingsView } from './components/SettingsView';
-import { bridge } from './lib/platform';
+import { bridge, isMobile } from './lib/platform';
+import { initMobileShell, setSystemBars } from './mobile/shell';
 
 const COMPACT_WIDTH = 760;
 
@@ -35,7 +36,39 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     void bridge.setTheme(theme);
+    if (isMobile) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const apply = () => setSystemBars(theme === 'dark' || (theme === 'system' && mq.matches));
+      apply();
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
   }, [theme]);
+
+  // Android back button: close the drawer, then go back through Stanton's history.
+  const navOpenRef = useRef(navOpen);
+  navOpenRef.current = navOpen;
+  useEffect(() => {
+    if (!isMobile) return;
+    initMobileShell({
+      back: () => {
+        if (document.querySelector('.modal-backdrop, .menu')) {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          (document.querySelector('.modal') as HTMLElement | null)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          return true;
+        }
+        if (navOpenRef.current) {
+          setNavOpen(false);
+          return true;
+        }
+        if (useStore.getState().history.length) {
+          useStore.getState().back();
+          return true;
+        }
+        return false;
+      },
+    });
+  }, []);
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
   }, [scheme]);

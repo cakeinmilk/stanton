@@ -1,8 +1,8 @@
 import { useStore } from '../store';
 import type { ColorScheme } from '../types';
-import { isElectron, type DockState } from '../lib/platform';
+import { isElectron, isMobile, type DockState } from '../lib/platform';
 import { MenuButton } from './Menu';
-import { SyncSettings } from './SyncSettings';
+import { MobileSyncSettings, SyncSettings } from './SyncSettings';
 import { exportMenu, runImport } from '../lib/commands';
 
 const SCHEMES: { id: ColorScheme; name: string; side: string; primary: string; accent: string }[] = [
@@ -34,7 +34,7 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
         <div className="seg" role="group" aria-label="Theme">
           {(
             [
-              ['system', 'Follow Windows'],
+              ['system', isMobile ? 'Follow system' : 'Follow Windows'],
               ['light', 'Light'],
               ['dark', 'Dark'],
             ] as const
@@ -93,8 +93,9 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
         </section>
       )}
 
-      <SyncSettings />
+      {isMobile ? <MobileSyncSettings /> : <SyncSettings />}
 
+      {!isMobile && (
       <section className="panel">
         <div className="panel-head">
           <h2>Backup &amp; export</h2>
@@ -112,6 +113,7 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
         </div>
         <p className="setting-hint">Importing adds the projects in the file alongside your existing ones; nothing is overwritten.</p>
       </section>
+      )}
 
 
     </div>

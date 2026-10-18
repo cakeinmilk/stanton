@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { bridge, isElectron, type DockState } from '../lib/platform';
+import { bridge, isElectron, isMobile, type DockState, type SyncStatus } from '../lib/platform';
+import { mobileStatus, onMobileStatus, syncNow } from '../mobile/bridge';
+import { SYNC_LABEL } from './SyncSettings';
 import { useStore } from '../store';
-import { CloseIcon, DockIcon, MaximiseIcon, MinimiseIcon } from './Icons';
+import { CloseIcon, CloudIcon, DockIcon, MaximiseIcon, MinimiseIcon } from './Icons';
 import { SCRATCH_PAGE_ID, SCRATCH_PROJECT_ID } from '../lib/scratch';
 
 export function useDock() {
@@ -45,6 +47,7 @@ export function TitleBar({ compact, onToggleNav, dockState }: { compact: boolean
         {saveState === 'error' ? '⚠' : saveState === 'saving' ? '•' : ''}
       </span>
       <div className="drag-space" />
+      {isMobile && <MobileSyncButton />}
       <button
         type="button"
         className="tb-icon"
@@ -145,5 +148,23 @@ export function QuickSwitcher() {
         </select>
       )}
     </div>
+  );
+}
+
+/** Cloud icon showing the phone's sync state; tap to sync now (or open Settings to sign in). */
+function MobileSyncButton() {
+  const [st, setSt] = useState<SyncStatus>(mobileStatus());
+  const navigate = useStore((s) => s.navigate);
+  useEffect(() => onMobileStatus(setSt), []);
+  const state = st.state ?? 'idle';
+  return (
+    <button
+      type="button"
+      className={`tb-icon sync-btn is-${state}`}
+      aria-label={`${SYNC_LABEL[state]} – tap to ${state === 'signed-out' ? 'sign in' : 'sync now'}`}
+      onClick={() => (state === 'signed-out' || state === 'error' ? navigate({ name: 'settings' }) : void syncNow())}
+    >
+      <CloudIcon state={state} />
+    </button>
   );
 }

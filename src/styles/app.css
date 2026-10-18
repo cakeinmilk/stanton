@@ -660,3 +660,75 @@ li > div > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shad
 .note-content ul[data-type='taskList'] .ap-gutter:has(.ap-check) { left: -68px; }
 .note-content ul[data-type='taskList'] { padding-left: 52px; }
 .pill.warn { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+
+/* ===================== Android (Capacitor) ===================== */
+/* Safe areas: Capacitor passes the status bar / camera cutout / gesture bar sizes in. */
+:root {
+  --sa-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sa-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sa-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --sa-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+.is-mobile body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.is-mobile .app { padding-left: var(--sa-left); padding-right: var(--sa-right); background: var(--bg); }
+.is-mobile .titlebar {
+  height: calc(52px + var(--sa-top));
+  padding-top: var(--sa-top);
+  padding-left: 6px;
+  padding-right: 6px;
+  gap: 4px;
+}
+.is-mobile .titlebar .brand-name { display: inline; font-size: 17px; }
+.is-mobile .tb-icon { min-width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
+.is-mobile .quick-switcher { padding: 8px 10px; gap: 8px; }
+.is-mobile .quick-switcher select { height: 42px; font-size: 16px; border-radius: 10px; }
+.is-mobile .main { padding-bottom: var(--sa-bottom); scroll-behavior: auto; }
+.is-mobile .view { padding: 16px 14px calc(96px + var(--sa-bottom)); }
+.is-mobile .drawer { width: min(340px, 86%); }
+.is-mobile .drawer .sidebar { padding-top: 12px; padding-bottom: calc(12px + var(--sa-bottom)); }
+.is-mobile .sync-btn.is-offline, .is-mobile .sync-btn.is-signed-out { opacity: 0.6; }
+.is-mobile .sync-btn.is-error { color: #ffb3a6; }
+.cloud-icon.spin path:last-child { transform-origin: 12px 13px; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Touch sizing: comfortable targets, 16px text. */
+.is-touch body { font-size: 16px; }
+.is-touch .nav-item, .is-touch .nav-label, .is-touch .menu-item { min-height: 46px; }
+.is-touch .nav-row { min-height: 46px; }
+.is-touch .row-menu { opacity: 1; }
+.is-touch .icon-btn { width: 40px; height: 40px; font-size: 18px; }
+.is-touch .btn { height: 42px; padding: 0 16px; font-size: 15px; border-radius: 10px; }
+.is-touch .btn-small { height: 36px; }
+.is-touch .btn-big { height: 50px; padding: 0 24px; font-size: 16px; }
+.is-touch .menu { min-width: 240px; border-radius: 14px; padding: 6px; }
+.is-touch .menu-item { font-size: 16px; border-radius: 10px; }
+.is-touch .search input, .is-touch .text-input, .is-touch .field input { height: 44px; font-size: 16px; }
+.is-touch .entry-title { font-size: 17px; height: 40px; }
+.is-touch .note-content { font-size: 16px; line-height: 1.6; padding-right: 12px; }
+.is-touch .tb-btn { min-width: 38px; height: 38px; font-size: 16px; }
+.is-touch .toolbar { position: sticky; top: 0; z-index: 4; background: var(--surface); border-bottom: 1px solid var(--border); }
+.is-touch .page-toolbar { flex-wrap: wrap; top: 0; }
+.is-touch .page-toolbar .btn { flex: 1 1 auto; }
+.is-touch .entry-head { gap: 6px; padding: 10px 10px 6px 6px; }
+.is-touch .entry-head .date-chip input { height: 36px; font-size: 15px; }
+.is-touch .action-row { padding: 10px 4px; }
+.is-touch .ap-check.large { width: 26px; height: 26px; }
+.is-touch .modal { border-radius: 18px; padding: 20px; }
+.is-touch .modal-backdrop { align-items: end; padding: 12px 12px calc(12px + var(--sa-bottom)); }
+.is-touch .modal-actions .btn { flex: 1; }
+.is-touch .pin-chip { height: 36px; font-size: 14px; }
+.is-touch .date-row { padding: 10px 4px; }
+/* No hover on a phone: keep the action-point stars visible (faint until starred). */
+.is-touch .ap-star { opacity: 0.35; width: 28px; height: 28px; font-size: 19px; }
+.is-touch .note-content ul, .is-touch .note-content ol { padding-left: 50px; }
+.is-touch .ap-gutter { left: -52px; top: -1px; }
+.is-touch .ap-gutter:has(.ap-check) { left: -70px; }
+.is-touch .whole-action { opacity: 0.8; padding: 6px; }
+.is-touch .swatches { display: flex; flex-wrap: wrap; }
+.is-touch .card-grid { grid-template-columns: 1fr 1fr; }
+/* Phones: give the entry title its own full-width line under the badge/date. */
+.is-mobile .entry-head .entry-title { flex-basis: 100%; order: 10; min-width: 0; }
+.is-mobile .entry-head .date-chip input { width: 136px; padding: 0 4px; }
+.is-mobile .entry-head .whole-action { margin-left: auto; }
+.is-mobile .entry-head { gap: 4px; }
+.is-mobile .entry-head .collapse-btn, .is-mobile .entry-head .icon-btn { min-width: 32px; width: 32px; }

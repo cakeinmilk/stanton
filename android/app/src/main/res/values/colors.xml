@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="stantonTeal">#069494</color>
+    <color name="stantonTealDark">#046565</color>
+    <color name="colorPrimary">#069494</color>
+    <color name="colorPrimaryDark">#046565</color>
+    <color name="colorAccent">#FFD43B</color>
+</resources>

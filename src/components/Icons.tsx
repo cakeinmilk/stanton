@@ -85,3 +85,17 @@ export function CloseIcon({ size = 16 }: P) {
     </svg>
   );
 }
+
+/** Cloud with a tick / arrows / slash / exclamation for the phone's sync state. */
+export function CloudIcon({ state, size = 20 }: { state: string; size?: number }) {
+  const cloud = 'M7 18.5h10.2a4.3 4.3 0 0 0 .6-8.56A6 6 0 0 0 6.3 9.3 4.6 4.6 0 0 0 7 18.5Z';
+  return (
+    <svg className={`svg-icon cloud-icon${state === 'syncing' ? ' spin' : ''}`} width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d={cloud} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      {state === 'idle' && <path d="m9.3 13.6 1.9 1.9 3.6-3.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
+      {state === 'syncing' && <path d="M14.8 12.2a2.9 2.9 0 1 0-.7 2.6M14.9 10.3v2h-2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />}
+      {(state === 'offline' || state === 'signed-out') && <path d="M4 4l16 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
+      {state === 'error' && <path d="M12 10.3v3M12 15.6v.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}
+    </svg>
+  );
+}

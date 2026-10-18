@@ -1,7 +1,7 @@
 {
   "name": "stanton",
   "productName": "Stanton",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Stanton - a lightweight, dockable meeting notes app for Windows",
   "main": "dist-electron/main.js",
   "author": "Stanton",
@@ -16,9 +16,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "test": "vitest run",
     "dist": "npm run build && electron-builder --win --x64",
-    "dist:dir": "npm run build && electron-builder --win dir --x64"
+    "dist:dir": "npm run build && electron-builder --win dir --x64",
+    "build:android": "vite build --mode mobile && cap sync android",
+    "android:apk": "npm run build:android && cd android && ./gradlew assembleRelease"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@tiptap/extension-image": "^3.31.4",
     "@tiptap/extension-placeholder": "^3.31.4",
     "@tiptap/extension-task-item": "^3.31.4",
@@ -94,5 +97,10 @@
     "portable": {
       "artifactName": "Stanton-${version}-portable.exe"
     }
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3"
   }
 }

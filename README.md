@@ -49,6 +49,45 @@ Uninstalling Stanton does **not** delete your notes. They stay in `%APPDATA%\Sta
 
 **To add the old notes alongside existing ones:** first copy the files from the old `images` folder into the new PC's `%APPDATA%\Stanton\data\images`. The file names are unique, so nothing is overwritten. Then go to Settings → Backup & export → **Import from a backup…** and pick the old `stanton.json`. Choose "All files" in the file picker if it isn't listed.
 
+## Sync with Google Drive and the Android app
+
+Stanton can keep its notes in a Google Drive folder. The PC and your phone then share the same notes.
+
+**On the PC (no sign-in needed).** Install [Google Drive for desktop](https://www.google.com/drive/download/). It shows your Drive as a drive letter, e.g. `G:\My Drive`. In Stanton go to **Settings → Sync with Google Drive** and click **Use G:\My Drive\Stanton**, or choose another folder. Your existing notes are copied there and merged with anything already in the folder. Stanton watches the folder and merges changes from other devices within a few seconds. A safety copy is kept at `%APPDATA%\Stanton\data\sync-backup.json`. **Stop syncing** copies everything back to the PC.
+
+**On Android.** Install `Stanton-x.y.z.apk` from the release (see below). Open **Settings**, check that the folder name matches the PC's folder inside My Drive (`Stanton` by default), and tap **Sign in with Google**. The phone keeps its own copy, so it works offline. It syncs when it opens, every minute while open, when you leave the app, and a few seconds after you edit. Tap the cloud icon in the title bar to sync now.
+
+How changes are merged: every project, page and entry remembers when it was last changed. The newer version wins, deletions sync too, and edits to different entries on different devices are both kept. If the same entry is edited on both devices before they sync, the later edit wins.
+
+### Installing the APK (sideloading)
+
+1. On the phone, open the release page and download `Stanton-x.y.z.apk`.
+2. Open it. Android asks you to allow your browser (or My Files) to **install unknown apps**: allow it, go back and tap **Install**.
+3. Play Protect may warn about an unknown developer. Choose **More details → Install anyway**.
+
+Updates install over the top and keep your notes, because every release is signed with the same key.
+
+### One-time setup for Google sign-in (for whoever builds the releases)
+
+The Android app asks Google for access to Drive. Google only allows this for apps registered in a Google Cloud project. It's free.
+
+1. Go to <https://console.cloud.google.com/>, create a project (e.g. "Stanton"), then open **APIs & Services → Library**. Enable the **Google Drive API**.
+2. Open **APIs & Services → OAuth consent screen** (Google Auth Platform):
+   - Choose **External** and fill in the app name and your email.
+   - Under **Data access**, add the scope `https://www.googleapis.com/auth/drive`.
+   - Under **Audience**, click **Publish app** so it is *In production*. In *Testing* mode, sign-ins expire every 7 days. You don't need Google verification for personal use. Instead, the first sign-in shows "Google hasn't verified this app": choose **Advanced → Go to Stanton**.
+3. Open **Clients → Create client → Android**:
+   - Package name: `app.stanton.notes`
+   - SHA-1: the release key's fingerprint, from `keytool -list -v -keystore stanton-release.jks`
+   - No client ID or secret goes in the app. Google recognises it from the package name and signature.
+4. In the GitHub repository, add two secrets under **Settings → Secrets and variables → Actions**:
+   - `ANDROID_KEYSTORE_BASE64`: the keystore, base64-encoded (`base64 -w0 stanton-release.jks`)
+   - `ANDROID_KEYSTORE_PASSWORD`: its password
+
+   **Never commit the keystore, because this repository is public.** Keep a copy somewhere safe. A lost key means phones must uninstall and reinstall to update.
+
+If sign-in fails with "error 10" (*DEVELOPER_ERROR*), the package name or SHA-1 in step 3 doesn't match the installed APK.
+
 ## Development
 
 Requires Node.js 20+.
@@ -58,12 +97,16 @@ npm install
 npm run dev        # Vite dev server + Electron with live reload of the UI
 npm test           # unit tests
 npm run typecheck
+npm run build:android   # web build for Android + copy into android/ (then: cd android && ./gradlew assembleDebug)
 ```
+
+Open `http://localhost:5173/?mobile=1` in a phone-sized browser window to preview the Android layout. The Android app is a [Capacitor](https://capacitorjs.com) shell (`android/`). Google sign-in is a small native plugin (`GoogleDrivePlugin.java`, using Google Play services). Drive is accessed through its REST API from `src/mobile/`.
 
 ## Releases
 
-Push a version tag and GitHub Actions builds Stanton on Windows and publishes a GitHub Release
-with an installer, a portable `.exe` and a `.zip`:
+Push a version tag and GitHub Actions builds Stanton and publishes a GitHub Release with a Windows
+installer, a portable `.exe`, a `.zip` and the signed Android `.apk`. The Android build needs the
+two signing secrets described above.
 
 ```bash
 npm version patch            # bumps package.json and creates a tag such as v0.1.1
@@ -89,13 +132,15 @@ The dock uses [koffi](https://koffi.dev). Its JavaScript is bundled into `dist-e
 ## Project layout
 
 ```
-electron/        main process: window, storage, image protocol, AppBar docking
+electron/        main process: window, storage and sync folder, image protocol, AppBar docking
   appbar.ts      SHAppBarMessage via koffi (falls back to edge-snapping elsewhere)
 src/             React renderer
   editor/        TipTap editor + action-point extension (stars on list items)
   components/    Home, Project, Page, Archive views, sidebar, title bar, dialogs
   lib/           action-point extraction, persistence bridge, helpers
-  store.ts       zustand store and debounced persistence
+  mobile/        Android: Google Drive client, sync, back button and system bars
+  store.ts       zustand store, debounced persistence and change stamping for sync
+android/         Capacitor Android project (native Google sign-in plugin)
 ```
 
 Action points are not stored separately. They are list items in an entry's document with `action` (`open` / `done`) and `actionId` attributes. The Home and project views derive their lists from those, so the pinned copies always match the meeting.

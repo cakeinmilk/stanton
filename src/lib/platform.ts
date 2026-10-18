@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { createMobileBridge } from '../mobile/bridge';
 /** Bridge to the Electron main process, with a browser fallback for development/tests. */
 export type DockEdge = 'left' | 'right' | null;
 export interface DockState {
@@ -132,5 +134,9 @@ export function errorMessage(err: unknown): string {
   return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 }
 
-export const bridge: StantonBridge = (typeof window !== 'undefined' && window.stanton) || browserBridge;
+/** True inside the Android app (Capacitor). */
+export const isMobile =
+  typeof window !== 'undefined' && !window.stanton && (Capacitor.isNativePlatform() || new URLSearchParams(window.location.search).has('mobile'));
+
+export const bridge: StantonBridge = (typeof window !== 'undefined' && window.stanton) || (isMobile ? createMobileBridge() : browserBridge);
 export const isElectron = typeof window !== 'undefined' && !!window.stanton;

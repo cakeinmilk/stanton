@@ -3,6 +3,7 @@ import { applyRemoteData, selectData, useStore } from '../store';
 import { bridge, errorMessage, type SyncStatus } from '../lib/platform';
 import { formatDateTime } from '../lib/util';
 import { confirmDialog, toast } from './Dialogs';
+import { googleSignIn, googleSignOut, mobileStatus, onMobileStatus, syncNow } from '../mobile/bridge';
 
 const currentJson = () => JSON.stringify(selectData(useStore.getState()));
 
@@ -108,3 +109,80 @@ export function SyncSettings() {
     </section>
   );
 }
+
+/** Settings → Google Drive (Android app). */
+export function MobileSyncSettings() {
+  const [st, setSt] = useState<SyncStatus>(mobileStatus());
+  const [folder, setFolderText] = useState(st.folder ?? 'Stanton');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => onMobileStatus(setSt), []);
+
+  const signedIn = st.state !== 'signed-out';
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch {
+      /* status shows the error */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>Google Drive</h2>
+        {signedIn && <span className={`pill ${st.state === 'error' ? 'warn' : 'ok'}`}>{SYNC_LABEL[st.state ?? 'idle']}</span>}
+      </div>
+      {!signedIn ? (
+        <>
+          <p className="setting-text">
+            Sign in with your Google account to sync with the Stanton folder in your Google Drive – the same folder your PC uses (for example <code>G:\My Drive\Stanton</code>).
+          </p>
+          <label className="field">
+            <span>Folder in My Drive</span>
+            <input className="text-input" value={folder} onChange={(e) => setFolderText(e.target.value)} placeholder="Stanton" autoCapitalize="off" autoCorrect="off" />
+          </label>
+          <div className="setting-row">
+            <button type="button" className="btn btn-primary btn-big" disabled={busy} onClick={() => void run(() => googleSignIn(folder))}>
+              {busy ? 'Signing in…' : 'Sign in with Google'}
+            </button>
+          </div>
+          <p className="setting-hint">Until you sign in, notes are kept on this phone only. Anything you write now is merged in when you sign in.</p>
+        </>
+      ) : (
+        <>
+          <p className="setting-text">
+            Signed in as <b>{st.account}</b>. Syncing with <code>My Drive/{st.folder}</code>.
+          </p>
+          {st.lastSyncedAt && <p className="setting-hint">Last synced {formatDateTime(st.lastSyncedAt)}</p>}
+          <div className="setting-row">
+            <button type="button" className="btn btn-primary" disabled={busy || st.state === 'syncing'} onClick={() => void run(syncNow)}>
+              {st.state === 'syncing' ? 'Syncing…' : 'Sync now'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger-ghost"
+              disabled={busy}
+              onClick={async () => {
+                if (await confirmDialog('Sign out of Google?', 'Notes stay on this phone, but stop syncing until you sign in again.', { okLabel: 'Sign out' })) void run(googleSignOut);
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </>
+      )}
+      {st.lastError && <p className="setting-status error">{st.lastError}</p>}
+    </section>
+  );
+}
+
+export const SYNC_LABEL: Record<NonNullable<SyncStatus['state']>, string> = {
+  idle: 'Synced',
+  syncing: 'Syncing…',
+  offline: 'Offline',
+  error: 'Problem',
+  'signed-out': 'Not signed in',
+};
