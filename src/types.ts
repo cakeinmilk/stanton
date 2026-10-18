@@ -9,8 +9,16 @@ export interface ImportantDate {
   label: string;
 }
 
+export interface Tombstone {
+  id: ID;
+  /** When it was deleted (ISO). */
+  at: string;
+}
+
 export interface Project {
   id: ID;
+  /** Last change on any device (ISO), used when syncing. */
+  mtime?: string;
   name: string;
   color: string;
   createdAt: string;
@@ -20,6 +28,7 @@ export interface Project {
 
 export interface Page {
   id: ID;
+  mtime?: string;
   projectId: ID;
   title: string;
   createdAt: string;
@@ -30,6 +39,7 @@ export type EntryKind = 'meeting' | 'note' | 'task';
 
 export interface Entry {
   id: ID;
+  mtime?: string;
   pageId: ID;
   kind: EntryKind;
   title: string;
@@ -72,6 +82,10 @@ export interface StantonData {
   pages: Page[];
   entries: Entry[];
   prefs: Prefs;
+  /** Sync bookkeeping: deletions, and when order / preferences last changed. */
+  tombstones?: Tombstone[];
+  layoutMtime?: string;
+  prefsMtime?: string;
 }
 
 export type ColorScheme = 'teal' | 'royal' | 'graphite';

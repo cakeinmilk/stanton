@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from './store';
+import { applyRemoteData, useStore } from './store';
 import { Sidebar } from './components/Sidebar';
 import { QuickSwitcher, TitleBar, useDock } from './components/TitleBar';
 import { HomeView } from './components/HomeView';
@@ -39,6 +39,20 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
   }, [scheme]);
+  // Changes arriving from another device through the sync folder / Google Drive.
+  useEffect(
+    () =>
+      loaded
+        ? bridge.onRemoteData((json) => {
+            try {
+              applyRemoteData(JSON.parse(json));
+            } catch (e) {
+              console.error('Bad remote data', e);
+            }
+          })
+        : undefined,
+    [loaded],
+  );
   const minimizeToTray = useStore((s) => s.prefs.minimizeToTray);
   useEffect(() => {
     if (loaded) void bridge.setMinimizeToTray(minimizeToTray);

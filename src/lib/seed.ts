@@ -91,6 +91,9 @@ export function normalize(raw: unknown): StantonData {
     pages: withScratch(Array.isArray(r.pages) ? r.pages : []),
     entries: Array.isArray(r.entries) ? r.entries : [],
     prefs: upgradePrefs({ ...base.prefs, ...(r.prefs ?? {}) }),
+    tombstones: Array.isArray(r.tombstones) ? r.tombstones : [],
+    layoutMtime: typeof r.layoutMtime === 'string' ? r.layoutMtime : undefined,
+    prefsMtime: typeof r.prefsMtime === 'string' ? r.prefsMtime : undefined,
   };
 }
 

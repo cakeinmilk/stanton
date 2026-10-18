@@ -2,6 +2,7 @@ import { useStore } from '../store';
 import type { ColorScheme } from '../types';
 import { isElectron, type DockState } from '../lib/platform';
 import { MenuButton } from './Menu';
+import { SyncSettings } from './SyncSettings';
 import { exportMenu, runImport } from '../lib/commands';
 
 const SCHEMES: { id: ColorScheme; name: string; side: string; primary: string; accent: string }[] = [
@@ -91,6 +92,8 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
           </label>
         </section>
       )}
+
+      <SyncSettings />
 
       <section className="panel">
         <div className="panel-head">

@@ -7,12 +7,34 @@ export interface DockState {
 }
 export type ThemePref = 'system' | 'light' | 'dark';
 
+export interface SyncStatus {
+  /** The sync folder (desktop) or Drive folder path (mobile), or null when not syncing. */
+  folder: string | null;
+  suggestion: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  /** Mobile: signed-in Google account. */
+  account?: string | null;
+  state?: 'idle' | 'syncing' | 'offline' | 'error' | 'signed-out';
+}
+
+export interface SyncBridge {
+  status(): Promise<SyncStatus>;
+  chooseFolder(suggestion: string | null): Promise<string | null>;
+  enable(folder: string, currentJson: string): Promise<{ status: SyncStatus; json: string }>;
+  disable(currentJson: string): Promise<SyncStatus>;
+  onStatus(cb: (s: SyncStatus) => void): () => void;
+}
+
 
 export interface StantonBridge {
   platform: string;
   loadData(): Promise<string | null>;
   saveData(json: string): Promise<boolean>;
   saveImage(bytes: Uint8Array, mime: string): Promise<string>;
+  /** Data changed on another device (merged by the caller). */
+  onRemoteData(cb: (json: string) => void): () => void;
+  sync?: SyncBridge;
   dock(edge: DockEdge): Promise<DockState>;
   getDock(): Promise<DockState>;
   onDockChanged(cb: (state: DockState) => void): () => void;
@@ -61,6 +83,9 @@ const browserBridge: StantonBridge = {
     return true;
   },
   saveImage: blobToDataUrl,
+  onRemoteData() {
+    return () => undefined;
+  },
   async dock() {
     return { edge: null, mode: null };
   },

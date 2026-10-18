@@ -659,3 +659,4 @@ li > div > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shad
 .note-content ul[data-type='taskList'] .ap-gutter { left: -50px; top: 2px; }
 .note-content ul[data-type='taskList'] .ap-gutter:has(.ap-check) { left: -68px; }
 .note-content ul[data-type='taskList'] { padding-left: 52px; }
+.pill.warn { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }

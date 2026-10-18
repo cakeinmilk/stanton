@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { JSONContent } from '@tiptap/react';
 import type { ActionStatus, Entry, EntryKind, ID, ImportantDate, Project, StantonData, View } from './types';
 import { emptyData, normalize, seedData } from './lib/seed';
+import { mergeData, sameData, stampChanges } from './lib/sync';
 import { nowIso, PROJECT_COLORS, todayIso, uid } from './lib/util';
 import { setActionStatusInContent, wholeActionId } from './lib/actions';
 import { SCRATCH_PAGE_ID } from './lib/scratch';
@@ -274,8 +275,62 @@ export const useStore = create<Store>()((set, get) => {
   };
 });
 
-export function selectData(s: Store): StantonData {
-  return { version: 1, projects: s.projects, pages: s.pages, entries: s.entries, prefs: s.prefs };
+export function selectData(s: Pick<Store, 'projects' | 'pages' | 'entries' | 'prefs' | 'tombstones' | 'layoutMtime' | 'prefsMtime'>): StantonData {
+  return {
+    version: 1,
+    projects: s.projects,
+    pages: s.pages,
+    entries: s.entries,
+    prefs: s.prefs,
+    tombstones: s.tombstones ?? [],
+    layoutMtime: s.layoutMtime,
+    prefsMtime: s.prefsMtime,
+  };
+}
+
+// ---------- Sync support ----------
+
+let applyingRemote = false;
+let stamping = false;
+
+/**
+ * Bring in data from another device (e.g. the phone, via the Google Drive folder):
+ * merge it with what's here and refresh any open editors whose content changed.
+ */
+export function applyRemoteData(remote: StantonData) {
+  const st = useStore.getState();
+  if (!st.loaded) return;
+  const local = selectData(st);
+  const merged = mergeData(local, normalize(remote));
+  if (sameData(local, merged)) return;
+  const before = new Map(st.entries.map((e) => [e.id, e]));
+  const bump: Record<string, number> = {};
+  for (const e of merged.entries) {
+    const old = before.get(e.id);
+    if (old && old !== e && JSON.stringify(old.content) !== JSON.stringify(e.content)) bump[e.id] = (st.externalRev[e.id] ?? 0) + 1;
+  }
+  applyingRemote = true;
+  try {
+    useStore.setState({ ...merged, externalRev: { ...st.externalRev, ...bump } });
+  } finally {
+    applyingRemote = false;
+  }
+}
+
+/** Record when things change locally (mtime/tombstones), so merges know which copy is newer. */
+function startChangeTracking() {
+  useStore.subscribe((s, prev) => {
+    if (!s.loaded || !prev.loaded || applyingRemote || stamping) return;
+    if (s.projects === prev.projects && s.pages === prev.pages && s.entries === prev.entries && s.prefs === prev.prefs) return;
+    const patch = stampChanges(selectData(prev), selectData(s), nowIso());
+    if (!patch) return;
+    stamping = true;
+    try {
+      useStore.setState(patch);
+    } finally {
+      stamping = false;
+    }
+  });
 }
 
 /** Debounced persistence of the data portion of the store. */
@@ -299,9 +354,18 @@ async function flush() {
 }
 
 export function startPersistence() {
+  startChangeTracking();
   useStore.subscribe((s, prev) => {
     if (!s.loaded) return;
-    if (s.projects === prev.projects && s.pages === prev.pages && s.entries === prev.entries && s.prefs === prev.prefs && prev.loaded) return;
+    if (
+      s.projects === prev.projects &&
+      s.pages === prev.pages &&
+      s.entries === prev.entries &&
+      s.prefs === prev.prefs &&
+      s.tombstones === prev.tombstones &&
+      prev.loaded
+    )
+      return;
     pending = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(flush, 500);

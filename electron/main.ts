@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { DockController, DockEdge } from './appbar';
 import { log } from './log';
+import { DataStore } from './datastore';
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
 
@@ -12,9 +13,6 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'stanton', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
-const dataDir = () => path.join(app.getPath('userData'), 'data');
-const dataFile = () => path.join(dataDir(), 'stanton.json');
-const imagesDir = () => path.join(dataDir(), 'images');
 const settingsFile = () => path.join(app.getPath('userData'), 'window.json');
 
 interface WindowSettings {
@@ -25,6 +23,8 @@ interface WindowSettings {
   minimizeToTray?: boolean;
   /** Where the docked window last sat (DIP), used to open it in place. */
   dockBounds?: Rectangle;
+  /** Folder (e.g. in Google Drive) that holds stanton.json and images\ when syncing. */
+  syncFolder?: string | null;
 }
 
 function readSettings(): WindowSettings {
@@ -39,21 +39,22 @@ async function writeSettings(s: WindowSettings) {
   await fs.writeFile(settingsFile(), JSON.stringify(s, null, 2));
 }
 
-/** Atomic write: write a temp file then rename over the original. */
-async function writeAtomic(file: string, contents: string) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, contents, 'utf8');
-  if (existsSync(file)) await fs.copyFile(file, `${file}.bak`).catch(() => undefined);
-  await fs.rename(tmp, file);
-}
-
 let win: BrowserWindow | null = null;
 let dock: DockController | null = null;
 let settings: WindowSettings = {};
 let floatingBounds: Rectangle | undefined;
 let tray: Tray | null = null;
 let quitting = false;
+
+const store = new DataStore(
+  () => settings.syncFolder ?? null,
+  async (folder) => {
+    settings.syncFolder = folder;
+    await writeSettings(settings);
+  },
+  (json) => win?.webContents.send('data:remote', json),
+  (status) => win?.webContents.send('sync:status', status),
+);
 
 const iconPath = () => path.join(__dirname, '../build/icon.png');
 
@@ -218,30 +219,43 @@ async function removeRetiredFeatureFiles() {
 
 async function saveImage(bytes: Buffer, mime: string) {
   const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/svg+xml': 'svg' } as Record<string, string>)[mime] ?? 'png';
-  await fs.mkdir(imagesDir(), { recursive: true });
+  await fs.mkdir(store.imagesDir(), { recursive: true });
   const name = `${randomUUID()}.${ext}`;
-  await fs.writeFile(path.join(imagesDir(), name), bytes);
+  await fs.writeFile(path.join(store.imagesDir(), name), bytes);
   return `stanton://images/${name}`;
 }
 
 function registerIpc() {
   ipcMain.handle('data:load', async () => {
-    try {
-      return await fs.readFile(dataFile(), 'utf8');
-    } catch {
-      // Fall back to the backup if the main file is missing or unreadable.
-      try {
-        return await fs.readFile(`${dataFile()}.bak`, 'utf8');
-      } catch {
-        return null;
-      }
-    }
+    const json = await store.load();
+    store.startWatching();
+    return json;
   });
 
   ipcMain.handle('data:save', async (_e, json: string) => {
-    JSON.parse(json); // never persist something we can't read back
-    await writeAtomic(dataFile(), json);
+    const merged = await store.save(json);
+    // Changes from another device were merged in while saving: give them to the renderer.
+    if (merged) win?.webContents.send('data:remote', merged);
     return true;
+  });
+
+  ipcMain.handle('sync:status', () => store.getStatus());
+  ipcMain.handle('sync:choose-folder', async (_e, suggestion: string | null) => {
+    if (!win) return null;
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Choose a folder in Google Drive for Stanton',
+      defaultPath: suggestion ? path.dirname(suggestion) : undefined,
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return res.canceled || !res.filePaths[0] ? null : res.filePaths[0];
+  });
+  ipcMain.handle('sync:enable', async (_e, folder: string, currentJson: string) => {
+    const merged = await store.enable(folder, currentJson);
+    return { status: store.getStatus(), json: merged };
+  });
+  ipcMain.handle('sync:disable', async (_e, currentJson: string) => {
+    await store.disable(currentJson);
+    return store.getStatus();
   });
 
   ipcMain.handle('image:save', (_e, bytes: Uint8Array, mime: string) => saveImage(Buffer.from(bytes), mime));
@@ -321,7 +335,10 @@ if (!gotLock) {
     protocol.handle('stanton', (req) => {
       const url = new URL(req.url);
       if (url.host !== 'images') return new Response('Not found', { status: 404 });
-      const file = path.join(imagesDir(), path.basename(decodeURIComponent(url.pathname)));
+      const name = path.basename(decodeURIComponent(url.pathname));
+      let file = path.join(store.imagesDir(), name);
+      // Not synced down yet (or from before syncing was turned on)? Try this PC's own copy.
+      if (!existsSync(file) && existsSync(path.join(store.localImagesDir(), name))) file = path.join(store.localImagesDir(), name);
       return net.fetch(pathToFileURL(file).toString());
     });
     log(`Stanton ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
@@ -332,6 +349,7 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     quitting = true;
+    store.stopWatching();
     dock?.dispose();
     tray?.destroy();
   });

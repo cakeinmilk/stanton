@@ -7,6 +7,22 @@ contextBridge.exposeInMainWorld('stanton', {
   platform: process.platform,
   loadData: (): Promise<string | null> => ipcRenderer.invoke('data:load'),
   saveData: (json: string): Promise<boolean> => ipcRenderer.invoke('data:save', json),
+  onRemoteData: (cb: (json: string) => void) => {
+    const l = (_: unknown, json: string) => cb(json);
+    ipcRenderer.on('data:remote', l);
+    return () => ipcRenderer.removeListener('data:remote', l);
+  },
+  sync: {
+    status: () => ipcRenderer.invoke('sync:status'),
+    chooseFolder: (suggestion: string | null) => ipcRenderer.invoke('sync:choose-folder', suggestion),
+    enable: (folder: string, currentJson: string) => ipcRenderer.invoke('sync:enable', folder, currentJson),
+    disable: (currentJson: string) => ipcRenderer.invoke('sync:disable', currentJson),
+    onStatus: (cb: (s: unknown) => void) => {
+      const l = (_: unknown, s: unknown) => cb(s);
+      ipcRenderer.on('sync:status', l);
+      return () => ipcRenderer.removeListener('sync:status', l);
+    },
+  },
   saveImage: (bytes: Uint8Array, mime: string): Promise<string> => ipcRenderer.invoke('image:save', bytes, mime),
   dock: (edge: DockEdge): Promise<DockState> => ipcRenderer.invoke('window:dock', edge),
   getDock: (): Promise<DockState> => ipcRenderer.invoke('window:get-dock'),
