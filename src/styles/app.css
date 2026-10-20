@@ -732,3 +732,18 @@ li > div > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shad
 .is-mobile .entry-head .whole-action { margin-left: auto; }
 .is-mobile .entry-head { gap: 4px; }
 .is-mobile .entry-head .collapse-btn, .is-mobile .entry-head .icon-btn { min-width: 32px; width: 32px; }
+
+/* Settings → To-dos: finished items keep their normal look and get a drawn tick in the circle. */
+[data-done='tick'] .note-content li[data-action='done'] > p,
+[data-done='tick'] .note-content li[data-action='done'] > div > p,
+[data-done='tick'] .note-content ul[data-type='taskList'] li[data-checked='true'] > div,
+[data-done='tick'] .note-content ul[data-type='taskList'] li[data-checked='true'] > div > p,
+[data-done='tick'] .action-row.is-done .action-text,
+[data-done='tick'] .entry-card.whole-done .entry-title { text-decoration: none; color: inherit; }
+[data-done='tick'] .ap-check.is-done { background: var(--surface); color: transparent; position: relative; font-size: 0; }
+[data-done='tick'] .ap-check.is-done::after {
+  content: ''; position: absolute; left: 50%; top: 45%;
+  width: 28%; height: 52%; border: solid var(--primary); border-width: 0 2.5px 2.5px 0;
+  transform: translate(-50%, -50%) rotate(45deg); border-radius: 1px;
+}
+[data-done='tick'] .ap-check.is-done:hover { background: var(--primary-soft); }

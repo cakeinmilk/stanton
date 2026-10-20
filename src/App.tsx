@@ -22,6 +22,7 @@ export function App() {
   const dock = dockState.edge;
   const theme = useStore((s) => s.prefs.theme);
   const scheme = useStore((s) => s.prefs.scheme);
+  const doneStyle = useStore((s) => s.prefs.doneStyle);
   const [width, setWidth] = useState(window.innerWidth);
   const [navOpen, setNavOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -72,6 +73,9 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
   }, [scheme]);
+  useEffect(() => {
+    document.documentElement.dataset.done = doneStyle;
+  }, [doneStyle]);
   // Changes arriving from another device through the sync folder / Google Drive.
   useEffect(
     () =>

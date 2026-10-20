@@ -96,6 +96,8 @@ export interface Prefs {
   scheme: ColorScheme;
   homeProjectsView: 'cards' | 'list';
   minimizeToTray: boolean;
+  /** How finished to-dos look: crossed out and faded, or just ticked. */
+  doneStyle: 'strike' | 'tick';
 }
 
 export type View =

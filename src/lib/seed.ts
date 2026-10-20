@@ -7,6 +7,7 @@ export const DEFAULT_PREFS: Prefs = {
   scheme: 'teal',
   homeProjectsView: 'cards',
   minimizeToTray: true,
+  doneStyle: 'strike',
 };
 import { nowIso, todayIso, uid } from './util';
 

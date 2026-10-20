@@ -16,6 +16,7 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
   const theme = useStore((s) => s.prefs.theme);
   const scheme = useStore((s) => s.prefs.scheme);
   const minimizeToTray = useStore((s) => s.prefs.minimizeToTray);
+  const doneStyle = useStore((s) => s.prefs.doneStyle);
   const setPrefs = useStore((s) => s.setPrefs);
 
   return (
@@ -65,6 +66,16 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>To-dos</h2>
+        </div>
+        <label className="check">
+          <input type="checkbox" checked={doneStyle === 'tick'} onChange={(e) => setPrefs({ doneStyle: e.target.checked ? 'tick' : 'strike' })} /> Show finished to-dos
+          with a tick instead of crossing them out (they still leave the Home to-do list)
+        </label>
       </section>
 
       {isElectron && (
