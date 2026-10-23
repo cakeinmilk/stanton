@@ -123,10 +123,10 @@ export function SettingsView({ dockState }: { dockState: DockState }) {
           </button>
         </div>
         <p className="setting-hint">Importing adds the projects in the file alongside your existing ones; nothing is overwritten.</p>
-      </section>
+        </section>
       )}
 
-
+      <p className="settings-version">Stanton {__APP_VERSION__}</p>
     </div>
   );
 }

@@ -319,11 +319,38 @@ function registerIpc() {
   });
 }
 
-const gotLock = app.requestSingleInstanceLock();
+/** a > b for versions like "0.9.1". */
+const isNewer = (a: string, b: string) => {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+
+// One Stanton at a time. If an older version is still running (often hidden in the tray), it
+// steps aside for the newer one instead of the new one silently opening the old window.
+const TAKEOVER = '--stanton-takeover';
+const gotLock = app.requestSingleInstanceLock({ version: app.getVersion() });
 if (!gotLock) {
-  app.quit();
+  if (process.argv.includes(TAKEOVER)) app.quit();
+  else {
+    // Give an older copy a moment to quit, then start again (once) to take over.
+    setTimeout(() => {
+      // The portable .exe runs from a temp folder it deletes on exit, so relaunch the .exe itself.
+      const exe = process.env.PORTABLE_EXECUTABLE_FILE;
+      app.relaunch({ ...(exe ? { execPath: exe } : {}), args: [...process.argv.slice(1), TAKEOVER] });
+      app.exit(0);
+    }, 2500);
+  }
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, _argv, _cwd, extra) => {
+    const other = (extra as { version?: string } | null)?.version;
+    if (other && isNewer(other, app.getVersion())) {
+      log(`Stanton ${other} was started – closing ${app.getVersion()} so it can take over`);
+      quitting = true;
+      app.quit();
+      return;
+    }
     if (!win) return;
     if (!win.isVisible() || tray) showFromTray();
     if (win.isMinimized()) win.restore();

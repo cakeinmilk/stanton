@@ -1,5 +1,8 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
+
+const version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version as string;
 
 /** Add a strict Content-Security-Policy to the production build only (Vite's dev server needs inline scripts). */
 const csp = (mobile: boolean): Plugin => ({
@@ -16,6 +19,7 @@ const csp = (mobile: boolean): Plugin => ({
 export default defineConfig(({ mode }) => ({
   plugins: [react(), csp(mode === 'mobile')],
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(version) },
   build: { outDir: 'dist', emptyOutDir: true },
   server: { port: 5173, strictPort: true },
 }));

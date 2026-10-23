@@ -747,3 +747,4 @@ li > div > .ap-gutter .ap-star.is-on { opacity: 1; color: var(--star); text-shad
   transform: translate(-50%, -50%) rotate(45deg); border-radius: 1px;
 }
 [data-done='tick'] .ap-check.is-done:hover { background: var(--primary-soft); }
+.settings-version { margin: 8px 2px 0; font-size: 12px; color: var(--muted); }
